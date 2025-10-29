@@ -385,6 +385,61 @@ export interface Database {
           refreshed_at?: string | null
         }
       }
+      admin_timer_state: {
+        Row: {
+          id: string
+          event_id: string
+          mode: 'idle' | 'running' | 'paused'
+          remaining_seconds: number
+          total_seconds: number
+          started_at: string | null
+          paused_at: string | null
+          control_owner: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          mode?: 'idle' | 'running' | 'paused'
+          remaining_seconds?: number
+          total_seconds?: number
+          started_at?: string | null
+          paused_at?: string | null
+          control_owner?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          mode?: 'idle' | 'running' | 'paused'
+          remaining_seconds?: number
+          total_seconds?: number
+          started_at?: string | null
+          paused_at?: string | null
+          control_owner?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      progress_refresh_log: {
+        Row: {
+          id: string
+          event_id: string
+          refreshed_at: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          refreshed_at?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          refreshed_at?: string | null
+        }
+      }
     }
     Views: {
       finalists_view: {
@@ -421,6 +476,33 @@ export interface Database {
           delta_to_prev: number | null
           submitted_count: number | null
           criterion_scores: Json | null
+        }
+      }
+      event_judge_progress_view: {
+        Row: {
+          event_id: string | null
+          judge_profile_id: string | null
+          judge_name: string | null
+          team_id: string | null
+          team_name: string | null
+          status: 'not_started' | 'in_progress' | 'submitted' | null
+          last_updated: string | null
+          criteria_completed: number | null
+        }
+      }
+      ballot_unlock_requests_admin: {
+        Row: {
+          id: string | null
+          ballot_id: string | null
+          judge_profile_id: string | null
+          event_id: string | null
+          team_id: string | null
+          reason: string | null
+          status: 'pending' | 'approved' | 'rejected' | null
+          created_at: string | null
+          handled_at: string | null
+          handled_by: string | null
+          notes: string | null
         }
       }
     }
@@ -508,6 +590,66 @@ export interface Database {
         Returns: Json
       }
       check_rankings_auto_unlock: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: Json
+      }
+      get_judge_progress: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: {
+          event_id: string
+          judge_profile_id: string
+          judge_name: string
+          team_id: string
+          team_name: string
+          status: 'not_started' | 'in_progress' | 'submitted'
+          last_updated: string | null
+          criteria_completed: number
+        }[]
+      }
+      get_judge_criterion_detail: {
+        Args: {
+          p_event_id: string
+          p_judge_profile_id: string
+          p_team_id: string
+        }
+        Returns: Json
+      }
+      start_timer: {
+        Args: {
+          p_event_id: string
+          p_duration_seconds: number
+        }
+        Returns: Json
+      }
+      pause_timer: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: Json
+      }
+      resume_timer: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: Json
+      }
+      reset_timer: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: Json
+      }
+      lock_event: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: Json
+      }
+      unlock_event: {
         Args: {
           p_event_id: string
         }
