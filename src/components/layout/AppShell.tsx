@@ -1,10 +1,6 @@
 import { type PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  ClipboardCheck,
-  Gauge,
-  ShieldCheck,
-} from 'lucide-react';
+import { ClipboardCheck, Gauge, LogIn, ShieldCheck } from 'lucide-react';
 
 import { appMetadata } from '@/config/app-metadata';
 import { buildInfo } from '@/lib/build-info';
@@ -13,6 +9,12 @@ import { cn } from '@/lib/utils';
 import { SafeAreaContainer } from './SafeAreaContainer';
 
 const navItems = [
+  {
+    to: '/auth',
+    label: 'Auth',
+    description: 'Magic link & PIN',
+    icon: LogIn,
+  },
   {
     to: '/brief',
     label: 'Brief',
