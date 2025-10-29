@@ -190,6 +190,8 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 ### F7 — Live Ranking (Gated) (P0)
 - `rankings_view` → raw averages; **hidden from judges** until all submit.
 - Admin always sees ranks.
+<!-- TODO[clarification][owner=Product][due=2024-02-20]: Confirm whether "all submit" gating is evaluated per team (all judges submitted a ballot for that team) or globally (every judge finished every team) to determine when rankings unlock for judges. -->
+<!-- TODO[clarification][owner=Data][due=2024-02-20]: Specify the exact metrics displayed in the live ranking view (e.g., total score, criterion breakdown, variance) so the UI and data queries align with expectations. -->
 
 **Mobile AC:** table collapses to cards on phones; font‑mono values.
 
