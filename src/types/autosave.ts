@@ -5,6 +5,11 @@ export type AutosaveDraftPayload = {
   updatedAt: string;
   payloadVersion: number;
   scores: Record<string, number>;
+  commentStrength?: string;
+  commentImprovement?: string;
+  /**
+   * @deprecated Replaced by `commentStrength` and `commentImprovement` for Feature F5.
+   */
   comments?: Record<string, string>;
 } & Record<string, unknown>;
 
