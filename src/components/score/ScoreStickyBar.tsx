@@ -2,7 +2,7 @@ import { Loader2, WifiOff } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-export type ScoreFormStatus = 'incomplete' | 'ready' | 'pending';
+export type ScoreFormStatus = 'incomplete' | 'ready' | 'pending' | 'locked';
 
 export interface ScoreStickyBarProps {
   total: number;
@@ -23,6 +23,8 @@ function formatStatusCopy(status: ScoreFormStatus, missingCount: number, isOffli
         : 'All criteria scored. Submit when you are ready.';
     case 'pending':
       return 'Submitting your scores… hold tight.';
+    case 'locked':
+      return 'Ballot locked. Request an unlock to make additional changes.';
     default:
       if (isOffline) {
         return missingCount > 1
@@ -90,9 +92,13 @@ export function ScoreStickyBar({
               isBlocked && 'cursor-not-allowed opacity-60',
             )}
             aria-disabled={isBlocked}
-            disabled={status === 'pending'}
+            disabled={status === 'pending' || status === 'locked'}
             onClick={(event) => {
               if (status === 'pending') {
+                event.preventDefault();
+                return;
+              }
+              if (status === 'locked') {
                 event.preventDefault();
                 return;
               }
@@ -100,7 +106,7 @@ export function ScoreStickyBar({
             }}
           >
             {status === 'pending' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-            Submit scores
+            {status === 'locked' ? 'Ballot locked' : 'Submit scores'}
           </button>
         </div>
       </div>

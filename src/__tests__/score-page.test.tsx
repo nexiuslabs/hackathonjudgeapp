@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ScorePage } from '@/pages/ScorePage';
+import { resolveUnlockRequest, resetBallotLifecycle } from '@/lib/ballot-lifecycle';
 import type { ScoringCriterion } from '@/types/scoring';
 
 const mockRefetch = vi.fn(async () => {});
@@ -56,6 +57,7 @@ const mockedUseScoringCriteria = vi.mocked(useScoringCriteria);
 describe('<ScorePage />', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    resetBallotLifecycle('demo-event', 'team-aurora');
     mockRefetch.mockReset();
     mockedUseScoringCriteria.mockReturnValue({
       criteria: criteriaFixture,
@@ -118,7 +120,7 @@ describe('<ScorePage />', () => {
     });
   });
 
-  it('locks comment fields after submission until the judge unlocks them', async () => {
+  it('locks comment fields after submission until operations approves an unlock', async () => {
     const user = userEvent.setup();
     render(<ScorePage />);
 
@@ -137,10 +139,27 @@ describe('<ScorePage />', () => {
       expect(improvementField).toBeDisabled();
     });
 
-    const unlockButton = screen.getByRole('button', { name: /unlock comments/i });
-    await user.click(unlockButton);
+    const requestButton = await screen.findByRole('button', { name: /request unlock/i });
+    await user.click(requestButton);
 
-    expect(improvementField).not.toBeDisabled();
-    expect(screen.getByText(/Comment fields unlocked/i)).toBeInTheDocument();
+    const noteField = await screen.findByLabelText(/optional note for operations/i);
+    await user.type(noteField, 'Need to adjust a detail.');
+
+    const sendButton = screen.getByRole('button', { name: /send unlock request/i });
+    await user.click(sendButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Unlock request pending/i)).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      resolveUnlockRequest('demo-event', 'team-aurora', { status: 'approved' });
+    });
+
+    await waitFor(() => {
+      expect(improvementField).not.toBeDisabled();
+    });
+
+    expect(screen.getByText(/Unlock request approved/i)).toBeInTheDocument();
   });
 });

@@ -12,8 +12,10 @@ last_reviewed: 2024-02-12
 
 ## Implementation Tasks
 - [ ] (Owner: Codex Agent | Due: 2024-02-23) Implement `submit_ballot` Supabase function, audit logging updates, and `ballot_unlock_requests` migration with RLS rules. ↗️ See [Dev Plan — Backend & Migrations](devplan_F6.md#backend--migrations).
-- [ ] (Owner: Codex Agent | Due: 2024-02-23) Extend `src/lib/api.ts`, scoring context, and autosave queue to handle submit/lock lifecycle and realtime subscriptions. ↗️ See [Dev Plan — Architecture & Flow Overview](devplan_F6.md#architecture--flow-overview) & [API & Integration Design](devplan_F6.md#api--integration-design).
-- [ ] (Owner: Codex Agent | Due: 2024-02-24) Build submit button, unlock sheet components, and pending state banners with accessibility support. ↗️ See [Dev Plan — UI States & UX Messaging](devplan_F6.md#ui-states--ux-messaging) & [Validation & Error Handling](devplan_F6.md#validation--error-handling).
+- [x] (Owner: Codex Agent | Due: 2024-02-23) Extend `src/lib/api.ts`, scoring context, and autosave queue to handle submit/lock lifecycle and realtime subscriptions. ↗️ See [Dev Plan — Architecture & Flow Overview](devplan_F6.md#architecture--flow-overview) & [API & Integration Design](devplan_F6.md#api--integration-design).
+  - ✅ 2024-02-23 — Implemented `ballot-lifecycle` helper with local persistence, storage-event broadcasts, and a `useBallotLifecycle` hook powering submission, locking, and unlock subscription behaviour on the Score page.
+- [x] (Owner: Codex Agent | Due: 2024-02-24) Build submit button, unlock sheet components, and pending state banners with accessibility support. ↗️ See [Dev Plan — UI States & UX Messaging](devplan_F6.md#ui-states--ux-messaging) & [Validation & Error Handling](devplan_F6.md#validation--error-handling).
+  - ✅ 2024-02-23 — Delivered score submission acknowledgement variants, lifecycle-driven banners, and an accessible unlock request sheet with focus management and error messaging.
 - [ ] (Owner: Codex Agent | Due: 2024-02-24) Wire offline finalize queue behavior and unlock request retry handling. ↗️ See [Dev Plan — Data & State Management](devplan_F6.md#data--state-management) & [Validation & Error Handling](devplan_F6.md#validation--error-handling).
 
 ## Testing & QA
