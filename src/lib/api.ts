@@ -4,6 +4,7 @@ import { DEFAULT_MAX_SCORE, DEFAULT_MIN_SCORE, fallbackScoringCriteria } from '@
 import type { RankingEntry, RankingsConnectionState, RankingsSnapshot } from '@/types/rankings';
 import type { ScoringCriterion } from '@/types/scoring';
 import type { Database } from '@/types/database.types';
+import type { AdminEventSnapshot } from '@/types/admin';
 
 export class AuthApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -23,6 +24,13 @@ export class RankingsApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
     super(message);
     this.name = 'RankingsApiError';
+  }
+}
+
+export class AdminApiError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'AdminApiError';
   }
 }
 
@@ -515,5 +523,174 @@ export async function subscribeToRankings({
         : new RankingsApiError('Unable to subscribe to rankings updates.', error);
     onError?.(apiError);
     return null;
+  }
+}
+
+interface FetchAdminEventSummaryOptions {
+  eventId?: string;
+  signal?: AbortSignal;
+}
+
+interface AdminEventSummaryResult {
+  snapshot: AdminEventSnapshot;
+  isFallback: boolean;
+  error?: AdminApiError;
+}
+
+function createFallbackAdminEventSnapshot(overrides?: Partial<AdminEventSnapshot>): AdminEventSnapshot {
+  const now = new Date().toISOString();
+
+  return {
+    id: 'demo-event',
+    name: 'Global Innovation Finals',
+    description: 'Operations hub for the Hackathon Judge demo event.',
+    code: 'GIF-2024',
+    timezone: 'America/Los_Angeles',
+    location: 'Crescent Ballroom · San Francisco, CA',
+    startAt: '2024-02-23T16:30:00.000Z',
+    endAt: '2024-02-24T01:00:00.000Z',
+    totalJudges: 12,
+    totalTeams: 8,
+    fetchedAt: now,
+    source: 'fallback',
+    ...overrides,
+  } satisfies AdminEventSnapshot;
+}
+
+interface ParsedAdminEventMetadata {
+  timezone: string | null;
+  location: string | null;
+  startAt: string | null;
+  endAt: string | null;
+  totalJudges: number | null;
+  totalTeams: number | null;
+  code: string | null;
+  description: string | null;
+}
+
+function parseAdminEventMetadata(metadata: unknown): ParsedAdminEventMetadata {
+  if (!metadata || typeof metadata !== 'object') {
+    return {
+      timezone: null,
+      location: null,
+      startAt: null,
+      endAt: null,
+      totalJudges: null,
+      totalTeams: null,
+      code: null,
+      description: null,
+    } satisfies ParsedAdminEventMetadata;
+  }
+
+  const record = metadata as Record<string, unknown>;
+
+  const timezone = typeof record.timezone === 'string' ? record.timezone : null;
+  const location = typeof record.location === 'string' ? record.location : null;
+  const startAt =
+    typeof record.start_at === 'string'
+      ? record.start_at
+      : typeof record.startAt === 'string'
+        ? record.startAt
+        : null;
+  const endAt =
+    typeof record.end_at === 'string'
+      ? record.end_at
+      : typeof record.endAt === 'string'
+        ? record.endAt
+        : null;
+  const totalJudges = toInteger(record.total_judges) ?? toInteger(record.judge_count) ?? null;
+  const totalTeams = toInteger(record.total_teams) ?? toInteger(record.team_count) ?? null;
+  const code =
+    typeof record.code === 'string'
+      ? record.code
+      : typeof record.short_name === 'string'
+        ? record.short_name
+        : typeof record.slug === 'string'
+          ? record.slug
+          : null;
+  const description =
+    typeof record.summary === 'string'
+      ? record.summary
+      : typeof record.tagline === 'string'
+        ? record.tagline
+        : null;
+
+  return {
+    timezone,
+    location,
+    startAt,
+    endAt,
+    totalJudges,
+    totalTeams,
+    code,
+    description,
+  } satisfies ParsedAdminEventMetadata;
+}
+
+export async function fetchAdminEventSummary({
+  eventId,
+}: FetchAdminEventSummaryOptions = {}): Promise<AdminEventSummaryResult> {
+  const targetEventId = eventId ?? 'demo-event';
+
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('events')
+      .select('id,name,description,metadata')
+      .eq('id', targetEventId)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (!data) {
+      const fallback = createFallbackAdminEventSnapshot({ id: targetEventId });
+      return {
+        snapshot: fallback,
+        isFallback: true,
+        error: new AdminApiError('Event metadata is not available.'),
+      } satisfies AdminEventSummaryResult;
+    }
+
+    const metadata = parseAdminEventMetadata(data.metadata);
+
+    const snapshot: AdminEventSnapshot = {
+      id: data.id,
+      name: data.name,
+      description: data.description ?? metadata.description ?? null,
+      code: metadata.code ?? data.id,
+      timezone: metadata.timezone,
+      location: metadata.location,
+      startAt: metadata.startAt,
+      endAt: metadata.endAt,
+      totalJudges: metadata.totalJudges,
+      totalTeams: metadata.totalTeams,
+      fetchedAt: new Date().toISOString(),
+      source: 'supabase',
+    } satisfies AdminEventSnapshot;
+
+    return {
+      snapshot,
+      isFallback: false,
+    } satisfies AdminEventSummaryResult;
+  } catch (error) {
+    if (error instanceof AuthApiError) {
+      return {
+        snapshot: createFallbackAdminEventSnapshot({ id: targetEventId }),
+        isFallback: true,
+      } satisfies AdminEventSummaryResult;
+    }
+
+    const adminError =
+      error instanceof AdminApiError
+        ? error
+        : new AdminApiError('Unable to load the event overview.', error);
+
+    return {
+      snapshot: createFallbackAdminEventSnapshot({ id: targetEventId }),
+      isFallback: true,
+      error: adminError,
+    } satisfies AdminEventSummaryResult;
   }
 }
