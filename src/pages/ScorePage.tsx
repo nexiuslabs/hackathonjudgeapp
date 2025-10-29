@@ -1,15 +1,17 @@
 import { AlertCircle, BookOpen, CheckCircle2, RefreshCcw, ShieldQuestion } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { ScoreCriteriaList } from '@/components/score/ScoreCriteriaList';
 import { CommentField } from '@/components/score/CommentField';
 import type { ScoreFieldStatus } from '@/components/score/ScoreSliderCard';
 import { ScoreSkeleton, ScoreStickyBarSkeleton } from '@/components/score/ScoreSkeleton';
 import { ScoreStickyBar, type ScoreFormStatus } from '@/components/score/ScoreStickyBar';
+import { UnlockRequestSheet } from '@/components/score/UnlockRequestSheet';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateWeightedTotal } from '@/lib/api';
 import { useScoringCriteria } from '@/hooks/useScoringCriteria';
 import { useCommentFields } from '@/hooks/useCommentFields';
+import { useBallotLifecycle } from '@/hooks/useBallotLifecycle';
 
 const EVENT_ID = 'demo-event';
 const TEAM_ID = 'team-aurora';
@@ -20,9 +22,26 @@ export function ScorePage() {
   const [scores, setScores] = useState<Record<string, number | undefined>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [showValidation, setShowValidation] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [acknowledgement, setAcknowledgement] = useState<ReactNode>(null);
-  const [commentsLocked, setCommentsLocked] = useState(false);
+  const [isUnlockSheetOpen, setIsUnlockSheetOpen] = useState(false);
+  const [unlockNote, setUnlockNote] = useState('');
+
+  const lifecycle = useBallotLifecycle({ eventId: EVENT_ID, teamId: TEAM_ID });
+  const {
+    locked: commentsLocked,
+    isSubmitting,
+    submitBallot,
+    requestUnlock,
+    cancelUnlock,
+    unlockRequest,
+    queuedSubmission,
+    lastSubmittedAt,
+    isUnlocking,
+    unlockRequestError,
+  } = lifecycle;
+
+  const previousLockRef = useRef(commentsLocked);
+  const previousUnlockStatusRef = useRef(unlockRequest.status);
 
   const commentFields = useCommentFields({
     storageKey: `${EVENT_ID}:${TEAM_ID}`,
@@ -36,6 +55,97 @@ export function ScorePage() {
     setTouched({});
     setShowValidation(false);
   }, [criteriaSignature]);
+
+  useEffect(() => {
+    if (previousLockRef.current === commentsLocked) {
+      return;
+    }
+
+    previousLockRef.current = commentsLocked;
+
+    if (commentsLocked) {
+      setAcknowledgement(
+        <div className="flex flex-col gap-3">
+          <p>
+            {queuedSubmission || isOffline
+              ? 'Scores queued while offline. They will sync automatically once you are reconnected.'
+              : 'Scores ready! Submit to operations when the full panel confirms.'}
+          </p>
+          <p className="text-sm text-neutral-300">
+            Comments are locked to preserve your submission. Request an unlock below if you need to make an adjustment.
+          </p>
+          <button
+            type="button"
+            className="self-start rounded-full border border-surface-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200 transition hover:border-brand-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            onClick={() => setIsUnlockSheetOpen(true)}
+          >
+            Request unlock
+          </button>
+        </div>,
+      );
+    } else {
+      setAcknowledgement('Unlock request approved. Comments are editable again. Remember to re-submit after editing.');
+    }
+  }, [commentsLocked, isOffline, queuedSubmission]);
+
+  useEffect(() => {
+    if (previousUnlockStatusRef.current === unlockRequest.status) {
+      return;
+    }
+
+    previousUnlockStatusRef.current = unlockRequest.status;
+
+    if (unlockRequest.status === 'pending') {
+      setAcknowledgement(
+        <div className="flex flex-col gap-2">
+          <p>Unlock request pending. Operations will notify you once the ballot is released.</p>
+          {unlockRequest.note ? (
+            <p className="text-xs text-neutral-300">Shared note: “{unlockRequest.note}”</p>
+          ) : null}
+          <button
+            type="button"
+            className="self-start rounded-full border border-surface-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200 transition hover:border-brand-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            onClick={() => cancelUnlock()}
+          >
+            Cancel request
+          </button>
+        </div>,
+      );
+    }
+
+    if (unlockRequest.status === 'rejected') {
+      setAcknowledgement(
+        <div className="flex flex-col gap-2">
+          <p>Unlock request denied. Contact the operations desk if you still need adjustments.</p>
+          {unlockRequest.resolutionNote ? (
+            <p className="text-xs text-neutral-300">Message from operations: “{unlockRequest.resolutionNote}”</p>
+          ) : null}
+        </div>,
+      );
+    }
+
+    if (unlockRequest.status === 'idle' && commentsLocked) {
+      setAcknowledgement(
+        <div className="flex flex-col gap-3">
+          <p>
+            {queuedSubmission || isOffline
+              ? 'Scores queued while offline. They will sync automatically once you are reconnected.'
+              : 'Scores ready! Submit to operations when the full panel confirms.'}
+          </p>
+          <p className="text-sm text-neutral-300">
+            Comments are locked to preserve your submission. Request an unlock below if you need to make an adjustment.
+          </p>
+          <button
+            type="button"
+            className="self-start rounded-full border border-surface-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200 transition hover:border-brand-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            onClick={() => setIsUnlockSheetOpen(true)}
+          >
+            Request unlock
+          </button>
+        </div>,
+      );
+    }
+  }, [cancelUnlock, commentsLocked, isOffline, queuedSubmission, unlockRequest.note, unlockRequest.resolutionNote, unlockRequest.status]);
 
   const statusMap = useMemo(() => {
     const map: Record<string, ScoreFieldStatus> = {};
@@ -72,7 +182,13 @@ export function ScorePage() {
     [criteria, scores],
   );
 
-  const formStatus: ScoreFormStatus = isSubmitting ? 'pending' : missingCount === 0 ? 'ready' : 'incomplete';
+  const formStatus: ScoreFormStatus = isSubmitting
+    ? 'pending'
+    : commentsLocked
+      ? 'locked'
+      : missingCount === 0
+        ? 'ready'
+        : 'incomplete';
 
   const handleScoreChange = (criterionId: string, value: number) => {
     setScores((previous) => ({ ...previous, [criterionId]: value }));
@@ -100,33 +216,43 @@ export function ScorePage() {
       return;
     }
 
-    setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsSubmitting(false);
-    setCommentsLocked(true);
+    const payloadScores: Record<string, number> = {};
+    for (const criterion of criteria) {
+      const scoreValue = scores[criterion.id];
+      if (typeof scoreValue === 'number') {
+        payloadScores[criterion.id] = scoreValue;
+      }
+    }
 
-    setAcknowledgement(
-      <div className="flex flex-col gap-3">
-        <p>
-          {isOffline
-            ? 'Scores queued while offline. They will sync automatically once you are reconnected.'
-            : 'Scores ready! Submit to operations when the full panel confirms.'}
-        </p>
-        <p className="text-sm text-neutral-300">
-          Comments are locked to preserve your submission. Unlock them below if you need to make an adjustment.
-        </p>
-        <button
-          type="button"
-          className="self-start rounded-full border border-surface-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200 transition hover:border-brand-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
-          onClick={() => {
-            setCommentsLocked(false);
-            setAcknowledgement('Comment fields unlocked. Remember to re-submit after editing.');
-          }}
-        >
-          Unlock comments
-        </button>
-      </div>,
-    );
+    try {
+      const result = await submitBallot({
+        scores: payloadScores,
+        comments: commentFields.getPayload(),
+      });
+
+      setAcknowledgement(
+        <div className="flex flex-col gap-3">
+          <p>
+            {result === 'queued' || queuedSubmission || isOffline
+              ? 'Scores queued while offline. They will sync automatically once you are reconnected.'
+              : 'Scores ready! Submit to operations when the full panel confirms.'}
+          </p>
+          <p className="text-sm text-neutral-300">
+            Comments are locked to preserve your submission. Request an unlock below if you need to make an adjustment.
+          </p>
+          <button
+            type="button"
+            className="self-start rounded-full border border-surface-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200 transition hover:border-brand-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            onClick={() => setIsUnlockSheetOpen(true)}
+          >
+            Request unlock
+          </button>
+        </div>,
+      );
+    } catch (error) {
+      console.error('Failed to submit ballot', error);
+      setAcknowledgement('We could not submit your scores. Please try again.');
+    }
   };
 
   const handleSaveDraft = () => {
@@ -253,7 +379,7 @@ export function ScorePage() {
                     : null
                 }
                 disabled={commentsLocked}
-                readOnlyMessage="Submission locked. Unlock to make edits."
+                readOnlyMessage="Submission locked. Request unlock to make edits."
               />
               <CommentField
                 label="Improvements to consider"
@@ -274,7 +400,7 @@ export function ScorePage() {
                     : null
                 }
                 disabled={commentsLocked}
-                readOnlyMessage="Submission locked. Unlock to make edits."
+                readOnlyMessage="Submission locked. Request unlock to make edits."
               />
             </div>
           </section>
@@ -286,6 +412,42 @@ export function ScorePage() {
           {acknowledgement}
         </div>
       ) : null}
+
+      <UnlockRequestSheet
+        open={isUnlockSheetOpen}
+        note={unlockNote}
+        onNoteChange={setUnlockNote}
+        onClose={() => {
+          setIsUnlockSheetOpen(false);
+          setUnlockNote('');
+        }}
+        onSubmit={async () => {
+          try {
+            await requestUnlock(unlockNote);
+            setAcknowledgement(
+              <div className="flex flex-col gap-2">
+                <p>Unlock request pending. Operations will notify you once the ballot is released.</p>
+                {unlockNote.trim() ? (
+                  <p className="text-xs text-neutral-300">Shared note: “{unlockNote.trim()}”</p>
+                ) : null}
+                <button
+                  type="button"
+                  className="self-start rounded-full border border-surface-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200 transition hover:border-brand-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+                  onClick={() => cancelUnlock()}
+                >
+                  Cancel request
+                </button>
+              </div>,
+            );
+            setUnlockNote('');
+            setIsUnlockSheetOpen(false);
+          } catch (error) {
+            console.error('Failed to request unlock', error);
+          }
+        }}
+        isSubmitting={isUnlocking}
+        errorMessage={unlockRequestError}
+      />
 
       <div id="score-submit" aria-live="polite" aria-atomic="true" className="sr-only">
         {formStatus === 'ready' ? 'All criteria scored. Submit when you are ready.' : 'Scoring incomplete.'}
@@ -300,7 +462,7 @@ export function ScorePage() {
           status={formStatus}
           onSubmit={handleSubmit}
           onSaveDraft={handleSaveDraft}
-          lastUpdated={commentFields.lastSavedAt ?? lastUpdated}
+          lastUpdated={commentFields.lastSavedAt ?? lastSubmittedAt ?? lastUpdated}
           isOffline={isOffline}
         />
       )}
