@@ -144,6 +144,9 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 ### F2 — Brief (Mobile Nav + Anchors) (P0)
 - Single page: Hero → Overview → Flow → Criteria (expanders) → Scoring CTA → Problems → Judges → Finalists → Contact.
 - Large accordions; anchor chips dock at top on scroll.
+> **Decision [owner=Codex Agent][date=2024-02-06]:** Store hero, overview, flow, and CTA copy in Supabase `brief_content` tables, enabling remote edits with offline prefetch mirroring in the PWA shell.
+> **Decision [owner=Codex Agent][date=2024-02-06]:** Serve judges and finalists from Supabase views with background refetch + manual refresh, persisting last-known payloads for offline use instead of realtime channels.
+> **Decision [owner=Codex Agent][date=2024-02-06]:** Cache last-known brief data (content + rosters) client-side with freshness timestamps and display an offline banner when falling back to stored payloads.
 
 **Mobile AC:** no horizontal scroll; images responsive; tap targets ≥44px.
 
