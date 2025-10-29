@@ -260,6 +260,131 @@ export interface Database {
           updated_at?: string | null
         }
       }
+      ballot_audit: {
+        Row: {
+          id: string
+          ballot_id: string | null
+          judge_profile_id: string | null
+          event_id: string
+          team_id: string | null
+          action: 'submitted' | 'unlock_requested' | 'unlock_approved' | 'unlock_rejected' | 'unlock_revoked'
+          metadata: Json
+          created_at: string | null
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          ballot_id?: string | null
+          judge_profile_id?: string | null
+          event_id: string
+          team_id?: string | null
+          action: 'submitted' | 'unlock_requested' | 'unlock_approved' | 'unlock_rejected' | 'unlock_revoked'
+          metadata?: Json
+          created_at?: string | null
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          ballot_id?: string | null
+          judge_profile_id?: string | null
+          event_id?: string
+          team_id?: string | null
+          action?: 'submitted' | 'unlock_requested' | 'unlock_approved' | 'unlock_rejected' | 'unlock_revoked'
+          metadata?: Json
+          created_at?: string | null
+          created_by?: string | null
+        }
+      }
+      ballot_unlock_requests: {
+        Row: {
+          id: string
+          ballot_id: string | null
+          judge_profile_id: string | null
+          event_id: string
+          team_id: string | null
+          reason: string | null
+          status: 'pending' | 'approved' | 'rejected'
+          created_at: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolution_notes: string | null
+        }
+        Insert: {
+          id?: string
+          ballot_id?: string | null
+          judge_profile_id?: string | null
+          event_id: string
+          team_id?: string | null
+          reason?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          created_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_notes?: string | null
+        }
+        Update: {
+          id?: string
+          ballot_id?: string | null
+          judge_profile_id?: string | null
+          event_id?: string
+          team_id?: string | null
+          reason?: string | null
+          status?: 'pending' | 'approved' | 'rejected'
+          created_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolution_notes?: string | null
+        }
+      }
+      events: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          rankings_unlocked_at: string | null
+          rankings_auto_unlock: boolean | null
+          created_at: string | null
+          updated_at: string | null
+          metadata: Json
+        }
+        Insert: {
+          id: string
+          name: string
+          description?: string | null
+          rankings_unlocked_at?: string | null
+          rankings_auto_unlock?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+          metadata?: Json
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          rankings_unlocked_at?: string | null
+          rankings_auto_unlock?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+          metadata?: Json
+        }
+      }
+      rankings_refresh_log: {
+        Row: {
+          id: string
+          event_id: string
+          refreshed_at: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          refreshed_at?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          refreshed_at?: string | null
+        }
+      }
     }
     Views: {
       finalists_view: {
@@ -284,6 +409,18 @@ export interface Database {
           display_order: number | null
           created_at: string | null
           updated_at: string | null
+        }
+      }
+      rankings_materialized: {
+        Row: {
+          event_id: string | null
+          team_id: string | null
+          team_name: string | null
+          total_score: number | null
+          rank: number | null
+          delta_to_prev: number | null
+          submitted_count: number | null
+          criterion_scores: Json | null
         }
       }
     }
@@ -312,6 +449,67 @@ export interface Database {
           p_criterion_id: string
           p_score_value: number
           p_comment?: string | null
+        }
+        Returns: Json
+      }
+      submit_ballot: {
+        Args: {
+          p_event_id: string
+          p_team_id: string
+          p_payload: Json
+          p_comment_strength?: string | null
+          p_comment_improvement?: string | null
+        }
+        Returns: Json
+      }
+      request_unlock: {
+        Args: {
+          p_event_id: string
+          p_team_id: string
+          p_reason?: string | null
+        }
+        Returns: Json
+      }
+      approve_unlock_request: {
+        Args: {
+          p_request_id: string
+          p_resolution_notes?: string | null
+        }
+        Returns: Json
+      }
+      reject_unlock_request: {
+        Args: {
+          p_request_id: string
+          p_resolution_notes?: string | null
+        }
+        Returns: Json
+      }
+      get_rankings: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: {
+          event_id: string
+          team_id: string
+          team_name: string
+          total_score: number
+          rank: number
+          delta_to_prev: number | null
+          submitted_count: number
+          criterion_scores: Json
+          is_unlocked: boolean
+          unlocked_at: string | null
+        }[]
+      }
+      unlock_rankings: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: Json
+      }
+      check_rankings_auto_unlock: {
+        Args: {
+          p_event_id: string
         }
         Returns: Json
       }
