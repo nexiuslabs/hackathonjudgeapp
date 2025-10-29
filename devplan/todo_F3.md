@@ -1,7 +1,7 @@
 ---
 owner: Codex Agent
-status: draft
-last_reviewed: 2024-02-07
+status: in_progress
+last_reviewed: 2024-08-24
 ---
 
 # TODO — F3 Judge Scoring UI (Sliders 1–10)
@@ -18,8 +18,9 @@ last_reviewed: 2024-02-07
 - [ ] (Owner: Codex Agent | Due: 2024-02-26) Coordinate Supabase schema updates for `scoring_criteria` metadata and score submission interface placeholders with RLS review. ↗️ See [Dev Plan — Backend & Migrations](devplan_F3.md#backend--migrations).
 
 ## Testing & QA
-- [ ] (Owner: Codex Agent | Due: 2024-02-26) Add unit, component, integration, accessibility, and visual regression tests per strategy. ↗️ See [Dev Plan — Testing Strategy](devplan_F3.md#testing-strategy).
+- [x] (Owner: Codex Agent | Due: 2024-02-26) Add unit, component, and integration tests per strategy. *(Completed — Codex Agent, 2024-08-24: Added `score-page`, `scoring-utils`, and comment draft coverage exercising validation, totals, and lifecycle messaging.)* ↗️ See [Dev Plan — Testing Strategy](devplan_F3.md#testing-strategy).
+- [ ] (Owner: Codex Agent | Due: 2024-02-26) Run accessibility and visual regression audits for scoring surfaces. *(Pending — need Lighthouse/Storybook workflow configured.)* ↗️ See [Dev Plan — Testing Strategy](devplan_F3.md#testing-strategy).
 
 ## Follow-ups
-- [ ] (Owner: Codex Agent | Due: 2024-02-27) Sync with Feature F4 team on autosave payload structure and queue identifiers for scoring form integration. ↗️ See [Dev Plan — Open Items & Follow-ups](devplan_F3.md#open-items--follow-ups).
-- [ ] (Owner: Codex Agent | Due: 2024-02-27) Align with design on final spacing/iconography and publish Storybook entries for scoring components. ↗️ See [Dev Plan — Open Items & Follow-ups](devplan_F3.md#open-items--follow-ups).
+- [ ] (Owner: Codex Agent | Due: 2024-02-27) Sync with Feature F4 team on autosave payload structure and queue identifiers for scoring form integration. *(In progress — awaiting F4 hook implementation to finalise payload contract.)* ↗️ See [Dev Plan — Open Items & Follow-ups](devplan_F3.md#open-items--follow-ups).
+- [ ] (Owner: Codex Agent | Due: 2024-02-27) Align with design on final spacing/iconography and publish Storybook entries for scoring components. *(Pending — Storybook instance not yet set up in repo.)* ↗️ See [Dev Plan — Open Items & Follow-ups](devplan_F3.md#open-items--follow-ups).

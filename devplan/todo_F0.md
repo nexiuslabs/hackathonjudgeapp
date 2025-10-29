@@ -1,7 +1,7 @@
 ---
 owner: Codex Agent
-status: draft
-last_reviewed: 2024-02-02
+status: in_progress
+last_reviewed: 2024-08-24
 ---
 
 # TODO — F0 Platform, Theme, PWA Shell
@@ -17,5 +17,5 @@ last_reviewed: 2024-02-02
 - [x] (Owner: Codex Agent | Completed: 2024-08-24) Establish testing and performance budget checks for the shell. ↗️ See [Dev Plan — Testing Strategy](devplan_F0.md#testing-strategy).
 
 ## Follow-ups
-- [ ] (Owner: Codex Agent | Due: 2024-02-15) Source final icon assets from design once available. ↗️ See [Dev Plan — Open Items & Follow-ups](devplan_F0.md#open-items--follow-ups).
+- [ ] (Owner: Codex Agent | Due: 2024-09-01) Source final icon assets from design once available. *(Blocked — awaiting updated asset pack from Design Ops as of 2024-08-24.)* ↗️ See [Dev Plan — Open Items & Follow-ups](devplan_F0.md#open-items--follow-ups).
 
