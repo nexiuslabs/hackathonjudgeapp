@@ -1,7 +1,7 @@
 ---
 owner: Codex Agent
-status: not_started
-last_reviewed: 2024-02-12
+status: in_progress
+last_reviewed: 2025-02-14
 ---
 
 # TODO — F7 Live Ranking (Gated)
@@ -15,12 +15,12 @@ last_reviewed: 2024-02-12
   - 2024-07-16 — Completed (Codex Agent): Added gated `/rankings` route with responsive layouts, live status header, and lock notice that mirrors PRD copy.
 - [x] (Owner: Codex Agent | Due: 2024-02-26) Implement `useRankingsFeed` hook with realtime + polling fallback, caching, and stale detection metadata. ↗️ See [Dev Plan — Architecture & Flow Overview](devplan_F7.md#architecture--flow-overview) & [Data & State Management](devplan_F7.md#data--state-management).
   - 2024-07-16 — Completed (Codex Agent): Hook now orchestrates Supabase realtime + polling with local cache hydration and stale indicators, covered by unit tests.
-- [ ] (Owner: Backend | Due: 2024-02-22) Update Supabase `rankings_view`/supporting schema to include required columns and unlock timestamp handling. ↗️ See [Dev Plan — Backend & Migrations](devplan_F7.md#backend--migrations) & [Feature PRD — Acceptance Criteria](featurePRD_F7.md#acceptance-criteria).
-- [ ] (Owner: Codex Agent | Due: 2024-02-27) Extend `src/lib/api.ts` with rankings fetch/subscribe helpers plus RBAC enforcement via protected RPC if needed. ↗️ See [Dev Plan — API & Integration Design](devplan_F7.md#api--integration-design).
+- [x] (Owner: Backend | Due: 2024-02-22) Update Supabase `rankings_view`/supporting schema to include required columns and unlock timestamp handling. *(Completed — Backend, 2025-02-14: Established events metadata, materialized rankings view, gating RPCs, and realtime triggers in migration `20251029105347_create_rankings_system_with_gating.sql`.)* ↗️ See [Dev Plan — Backend & Migrations](devplan_F7.md#backend--migrations) & [Feature PRD — Acceptance Criteria](featurePRD_F7.md#acceptance-criteria).
+- [x] (Owner: Codex Agent | Due: 2024-02-27) Extend `src/lib/api.ts` with rankings fetch/subscribe helpers plus RBAC enforcement via protected RPC if needed. *(Completed — Codex Agent, 2025-02-14: Added `fetchRankings`/`subscribeToRankings` with metadata parsing, realtime status mapping, and auth-aware error handling in `src/lib/api.ts`.)* ↗️ See [Dev Plan — API & Integration Design](devplan_F7.md#api--integration-design).
 - [ ] (Owner: Codex Agent | Due: 2024-02-28) Integrate rankings module into admin console (F8) and score app navigation, ensuring responsive layouts and accessibility copy. ↗️ See [Dev Plan — UI States & UX Messaging](devplan_F7.md#ui-states--ux-messaging) & [Feature PRD — Acceptance Criteria](featurePRD_F7.md#acceptance-criteria).
 
 ## Testing & QA
-- [ ] (Owner: Codex Agent | Due: 2024-02-29) Add unit/integration tests for gating transitions, realtime fallback, and offline states. ↗️ See [Dev Plan — Testing Strategy](devplan_F7.md#testing-strategy).
+- [x] (Owner: Codex Agent | Due: 2024-02-29) Add unit/integration tests for gating transitions, realtime fallback, and offline states. *(Completed — Codex Agent, 2025-02-14: `use-rankings-feed.test.ts` covers locked/unlocked metadata, cached fallback behaviour, and realtime-triggered refresh flows.)* ↗️ See [Dev Plan — Testing Strategy](devplan_F7.md#testing-strategy).
 - [ ] (Owner: QA | Due: 2024-03-01) Run accessibility + responsive audits (Lighthouse/Pa11y + device matrix) on rankings views. ↗️ See [Dev Plan — Testing Strategy](devplan_F7.md#testing-strategy) & [Feature PRD — Acceptance Criteria](featurePRD_F7.md#acceptance-criteria).
 
 ## Follow-ups
