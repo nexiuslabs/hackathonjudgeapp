@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { AdminPage } from '@/pages/AdminPage';
 import { AuthPage } from '@/pages/AuthPage';
 import { BriefPage } from '@/pages/BriefPage';
+import { RankingsPage } from '@/pages/RankingsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ScorePage } from '@/pages/ScorePage';
 
@@ -14,6 +15,7 @@ function App() {
         <Route path="/" element={<Navigate to="/brief" replace />} />
         <Route path="/brief" element={<BriefPage />} />
         <Route path="/score" element={<ScorePage />} />
+        <Route path="/rankings" element={<RankingsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="*" element={<NotFoundPage />} />

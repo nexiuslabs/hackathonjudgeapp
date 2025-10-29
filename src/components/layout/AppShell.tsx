@@ -1,6 +1,6 @@
 import { type PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ClipboardCheck, Gauge, LogIn, ShieldCheck } from 'lucide-react';
+import { ClipboardCheck, Gauge, LogIn, ShieldCheck, Trophy } from 'lucide-react';
 
 import { appMetadata } from '@/config/app-metadata';
 import { buildInfo } from '@/lib/build-info';
@@ -26,6 +26,12 @@ const navItems = [
     label: 'Score',
     description: 'Judge queue',
     icon: Gauge,
+  },
+  {
+    to: '/rankings',
+    label: 'Rankings',
+    description: 'Live standings',
+    icon: Trophy,
   },
   {
     to: '/admin',
