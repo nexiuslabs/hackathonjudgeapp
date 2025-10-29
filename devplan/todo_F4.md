@@ -11,7 +11,8 @@ last_reviewed: 2024-02-09
 - [x] (Owner: Engineering | Due: 2024-02-09) Locked exponential backoff policy (2s start, jittered doubling to 60s) with manual retry exposure in sticky submit bar. ↗️ See [Master PRD — F4 Decisions](masterPRD.md#f4--autosave--offline-queue-p0).
 
 ## Implementation Tasks
-- [ ] (Owner: Codex Agent | Due: 2024-02-15) Implement autosave storage abstraction (`createQueueStore`) with IndexedDB fallback and dedupe logic. ↗️ See [Dev Plan — Data & State Management](devplan_F4.md#data--state-management).
+- [x] (Owner: Codex Agent | Due: 2024-02-15) Implement autosave storage abstraction (`createQueueStore`) with IndexedDB fallback and dedupe logic. ↗️ See [Dev Plan — Data & State Management](devplan_F4.md#data--state-management).
+  - Completed — 2024-02-15: Added encrypted queue store with IndexedDB/localStorage persistence, dedupe, and cap pruning helpers.
 - [ ] (Owner: Codex Agent | Due: 2024-02-15) Build `useConnectivity` and `useAutosaveQueue` hooks emitting status updates and exposing manual flush controls. ↗️ See [Dev Plan — Architecture & Flow Overview](devplan_F4.md#architecture--flow-overview) & [API & Integration Design](devplan_F4.md#api--integration-design).
 - [ ] (Owner: Codex Agent | Due: 2024-02-16) Extend `src/lib/api.ts` with Supabase autosave upsert/fetch helpers and align types in `src/types/autosave.ts`. ↗️ See [Dev Plan — API & Integration Design](devplan_F4.md#api--integration-design).
 - [ ] (Owner: Backend | Due: 2024-02-16) Create Supabase migration for `autosave_ballots` table and RLS policies. ↗️ See [Dev Plan — Backend & Migrations](devplan_F4.md#backend--migrations).
