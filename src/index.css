@@ -33,6 +33,14 @@
   a:focus-visible {
     @apply outline-none ring-2 ring-offset-2 ring-offset-surface-base ring-brand-400/80;
   }
+
+  input[type='range'] {
+    @apply appearance-none bg-transparent;
+  }
+
+  input[type='range']:focus-visible {
+    @apply outline-none ring-0;
+  }
 }
 
 .safe-area-inline {
@@ -46,4 +54,22 @@
 
 .safe-area-bottom {
   padding-bottom: calc(var(--safe-area-block) + var(--safe-area-bottom));
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  @apply h-2 rounded-full bg-neutral-700;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  @apply h-6 w-6 rounded-full border-2 border-neutral-900 bg-brand-300 shadow-lg;
+  margin-top: -7px;
+}
+
+input[type='range']::-moz-range-track {
+  @apply h-2 rounded-full bg-neutral-700;
+}
+
+input[type='range']::-moz-range-thumb {
+  @apply h-6 w-6 rounded-full border-2 border-neutral-900 bg-brand-300 shadow-lg;
 }

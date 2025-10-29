@@ -1,83 +1,210 @@
-import { ArrowUpRight, UsersRound } from 'lucide-react';
+import { AlertCircle, BookOpen, CheckCircle2, RefreshCcw, ShieldQuestion } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { ScoreCriteriaList } from '@/components/score/ScoreCriteriaList';
+import type { ScoreFieldStatus } from '@/components/score/ScoreSliderCard';
+import { ScoreSkeleton, ScoreStickyBarSkeleton } from '@/components/score/ScoreSkeleton';
+import { ScoreStickyBar, type ScoreFormStatus } from '@/components/score/ScoreStickyBar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { calculateWeightedTotal } from '@/lib/api';
+import { useScoringCriteria } from '@/hooks/useScoringCriteria';
 
-const queue = [
-  { team: 'Nova Robotics', category: 'AI for Good', startsIn: '5 min' },
-  { team: 'BloomSense', category: 'Sustainability', startsIn: '25 min' },
-  { team: 'LedgerLoop', category: 'FinTech', startsIn: '50 min' },
-];
+const EVENT_ID = 'demo-event';
+const TEAM_ID = 'team-aurora';
 
 export function ScorePage() {
+  const { criteria, isLoading, error, isOffline, lastUpdated, refetch } = useScoringCriteria({ eventId: EVENT_ID });
+
+  const [scores, setScores] = useState<Record<string, number | undefined>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [showValidation, setShowValidation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [acknowledgement, setAcknowledgement] = useState<string | null>(null);
+
+  const criteriaSignature = useMemo(() => criteria.map((criterion) => criterion.id).join(':'), [criteria]);
+
+  useEffect(() => {
+    // Reset local state when the active criteria set changes.
+    setScores({});
+    setTouched({});
+    setShowValidation(false);
+  }, [criteriaSignature]);
+
+  const statusMap = useMemo(() => {
+    const map: Record<string, ScoreFieldStatus> = {};
+    for (const criterion of criteria) {
+      const hasValue = typeof scores[criterion.id] === 'number';
+      const wasTouched = touched[criterion.id];
+      if (hasValue) {
+        map[criterion.id] = 'valid';
+      } else if (wasTouched || showValidation) {
+        map[criterion.id] = 'incomplete';
+      } else {
+        map[criterion.id] = 'pristine';
+      }
+    }
+    return map;
+  }, [criteria, scores, showValidation, touched]);
+
+  const missingCount = useMemo(
+    () =>
+      criteria.reduce((count, criterion) => {
+        return typeof scores[criterion.id] === 'number' ? count : count + 1;
+      }, 0),
+    [criteria, scores],
+  );
+
+  useEffect(() => {
+    if (missingCount === 0) {
+      setShowValidation(false);
+    }
+  }, [missingCount]);
+
+  const total = useMemo(
+    () => calculateWeightedTotal(criteria, scores, { precision: 1, scale: 100 }),
+    [criteria, scores],
+  );
+
+  const formStatus: ScoreFormStatus = isSubmitting ? 'pending' : missingCount === 0 ? 'ready' : 'incomplete';
+
+  const handleScoreChange = (criterionId: string, value: number) => {
+    setScores((previous) => ({ ...previous, [criterionId]: value }));
+    setTouched((previous) => ({ ...previous, [criterionId]: true }));
+  };
+
+  const handleFirstInteraction = (criterionId: string) => {
+    setTouched((previous) => ({ ...previous, [criterionId]: true }));
+  };
+
+  const handleSubmit = async () => {
+    if (missingCount > 0) {
+      setShowValidation(true);
+      setAcknowledgement('Make sure each slider has a value before submitting.');
+      return;
+    }
+
+    setAcknowledgement(null);
+    setIsSubmitting(true);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    setIsSubmitting(false);
+    setAcknowledgement(
+      isOffline
+        ? 'Scores queued while offline. They will sync automatically once you are reconnected.'
+        : 'Scores ready! Submit to operations when the full panel confirms.',
+    );
+  };
+
+  const handleSaveDraft = () => {
+    setAcknowledgement('Progress saved locally. You can return to finish scoring anytime.');
+  };
+
+  const onboardingHighlights = [
+    {
+      title: 'Start with the judging brief',
+      body: 'Review each criterion definition before the pitch begins so your first slider move is intentional.',
+      icon: BookOpen,
+    },
+    {
+      title: 'Score with confidence',
+      body: 'Sliders use 1–10 steps. Drag or use the arrow keys; the total updates instantly with official weighting.',
+      icon: CheckCircle2,
+    },
+    {
+      title: 'Need clarification?',
+      body: 'Tap retry below if metadata fails to load or flag the ops team using the help desk button.',
+      icon: ShieldQuestion,
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="relative mx-auto flex w-full max-w-3xl flex-col gap-8 pb-32">
+      <a href="#score-submit" className="sr-only focus:not-sr-only focus:rounded-full focus:bg-brand-500/20 focus:px-4 focus:py-2 focus:text-white">
+        Skip to submit controls
+      </a>
       <Card>
         <CardHeader>
-          <CardTitle>Upcoming judging queue</CardTitle>
+          <CardTitle>Scoring workspace</CardTitle>
           <CardDescription>
-            Prep your rubric before each team joins. Tap a team to open their workspace when the session begins.
+            {`You are scoring ${TEAM_ID}. Every slider requires an intentional adjustment before submission.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {queue.map((entry) => (
+          <ul className="grid gap-4 md:grid-cols-3">
+            {onboardingHighlights.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li
+                  key={item.title}
+                  className="flex h-full flex-col gap-2 rounded-xl border border-surface-border/70 bg-surface-base/60 p-4"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500/15 text-brand-200">
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <p className="text-sm font-semibold text-white">{item.title}</p>
+                  <p className="text-sm text-neutral-300">{item.body}</p>
+                </li>
+              );
+            })}
+          </ul>
+        </CardContent>
+      </Card>
+
+      {error ? (
+        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 p-5 text-sm text-red-100">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-semibold">We could not refresh the scoring criteria.</p>
+              <p className="mt-1 text-red-100/80">
+                Your offline snapshot is displayed below. Reconnect or retry to pull the latest weights and helper copy.
+              </p>
               <button
-                key={entry.team}
                 type="button"
-                className="group flex flex-col gap-4 rounded-xl border border-surface-border/60 bg-surface-base/70 p-5 text-left transition hover:border-brand-400/60 hover:bg-brand-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/80"
+                onClick={refetch}
+                className="mt-4 inline-flex items-center gap-2 rounded-full border border-red-300/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-100 transition hover:border-red-200/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
               >
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-neutral-400">{entry.category}</p>
-                  <p className="text-lg font-semibold text-white">{entry.team}</p>
-                </div>
-                <div className="flex items-center justify-between text-sm text-neutral-300">
-                  <span className="flex items-center gap-2">
-                    <UsersRound className="h-4 w-4" aria-hidden="true" />
-                    Panel ready
-                  </span>
-                  <span className="flex items-center gap-2 text-brand-200">
-                    {entry.startsIn}
-                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                  </span>
-                </div>
+                <RefreshCcw className="h-4 w-4" aria-hidden="true" /> Retry loading
               </button>
-            ))}
+            </div>
           </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Score capture checklist</CardTitle>
-          <CardDescription>
-            Follow this flow to keep rubric entries consistent across judges.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ol className="space-y-3 text-sm text-neutral-200">
-            <li className="flex gap-3 rounded-lg border border-surface-border/60 bg-surface-elevated/50 p-4">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/15 font-semibold text-brand-200">1</span>
-              <div>
-                <p className="font-medium text-white">Capture quick impressions</p>
-                <p className="text-neutral-300">Log standout insights during the demo to speed up final scoring.</p>
-              </div>
-            </li>
-            <li className="flex gap-3 rounded-lg border border-surface-border/60 bg-surface-elevated/50 p-4">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/15 font-semibold text-brand-200">2</span>
-              <div>
-                <p className="font-medium text-white">Score each pillar</p>
-                <p className="text-neutral-300">Assign values for innovation, usability, technical depth, and storytelling.</p>
-              </div>
-            </li>
-            <li className="flex gap-3 rounded-lg border border-surface-border/60 bg-surface-elevated/50 p-4">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/15 font-semibold text-brand-200">3</span>
-              <div>
-                <p className="font-medium text-white">Submit final notes</p>
-                <p className="text-neutral-300">Highlight mentorship needs or standout differentiators for the operations team.</p>
-              </div>
-            </li>
-          </ol>
-        </CardContent>
-      </Card>
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <ScoreSkeleton />
+      ) : (
+        <ScoreCriteriaList
+          criteria={criteria}
+          scores={scores}
+          statusMap={statusMap}
+          onScoreChange={handleScoreChange}
+          onFirstInteraction={handleFirstInteraction}
+        />
+      )}
+
+      {acknowledgement ? (
+        <div className="rounded-2xl border border-brand-400/40 bg-brand-500/10 p-4 text-sm text-brand-100">
+          {acknowledgement}
+        </div>
+      ) : null}
+
+      <div id="score-submit" aria-live="polite" aria-atomic="true" className="sr-only">
+        {formStatus === 'ready' ? 'All criteria scored. Submit when you are ready.' : 'Scoring incomplete.'}
+      </div>
+
+      {isLoading ? (
+        <ScoreStickyBarSkeleton />
+      ) : (
+        <ScoreStickyBar
+          total={total}
+          missingCount={missingCount}
+          status={formStatus}
+          onSubmit={handleSubmit}
+          onSaveDraft={handleSaveDraft}
+          lastUpdated={lastUpdated}
+          isOffline={isOffline}
+        />
+      )}
     </div>
   );
 }

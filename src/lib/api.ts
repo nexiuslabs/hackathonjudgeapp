@@ -1,9 +1,19 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+import { DEFAULT_MAX_SCORE, DEFAULT_MIN_SCORE, fallbackScoringCriteria } from '@/config/scoring';
+import type { ScoringCriterion } from '@/types/scoring';
+
 export class AuthApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
     super(message);
     this.name = 'AuthApiError';
+  }
+}
+
+export class ScoringApiError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'ScoringApiError';
   }
 }
 
@@ -149,4 +159,110 @@ export async function logAuthEvent(payload: LogAuthEventPayload) {
   if (error) {
     throw new AuthApiError('Failed to record the authentication event.', error);
   }
+}
+
+export interface SupabaseScoringCriterionRow {
+  event_id: string;
+  criterion_id: string;
+  label: string;
+  helper_copy?: string | null;
+  weight?: number | string | null;
+  default_value?: number | null;
+  order_index?: number | null;
+  min_score?: number | null;
+  max_score?: number | null;
+}
+
+function normaliseWeight(weight: SupabaseScoringCriterionRow['weight']): number {
+  if (typeof weight === 'number') {
+    return weight > 1 ? weight / 100 : weight;
+  }
+
+  if (typeof weight === 'string') {
+    const parsed = parseFloat(weight.replace('%', ''));
+    if (Number.isFinite(parsed)) {
+      return parsed > 1 ? parsed / 100 : parsed;
+    }
+  }
+
+  return 0;
+}
+
+export async function getScoringCriteria(eventId: string): Promise<ScoringCriterion[]> {
+  if (!eventId) {
+    throw new ScoringApiError('An event identifier is required to load scoring criteria.');
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('scoring_criteria')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('order_index', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = (data ?? []) as SupabaseScoringCriterionRow[];
+
+    if (rows.length === 0) {
+      return fallbackScoringCriteria.map((criterion) => ({ ...criterion }));
+    }
+
+    return rows.map((item, index) => ({
+      id: item.criterion_id,
+      label: item.label,
+      helperText: item.helper_copy ?? '',
+      weight: normaliseWeight(item.weight),
+      defaultValue: item.default_value ?? null,
+      order: item.order_index ?? index,
+      minScore: item.min_score ?? DEFAULT_MIN_SCORE,
+      maxScore: item.max_score ?? DEFAULT_MAX_SCORE,
+    } satisfies ScoringCriterion));
+  } catch (error) {
+    if (error instanceof ScoringApiError) {
+      throw error;
+    }
+
+    throw new ScoringApiError('We could not load the scoring criteria. Please try again.', error);
+  }
+}
+
+export interface CalculateWeightedTotalOptions {
+  precision?: number;
+  scale?: number;
+}
+
+export function calculateWeightedTotal(
+  criteria: ScoringCriterion[],
+  scores: Record<string, number | undefined>,
+  options: CalculateWeightedTotalOptions = {},
+): number {
+  const { precision = 1, scale = 100 } = options;
+
+  if (!criteria.length) {
+    return 0;
+  }
+
+  const total = criteria.reduce((sum, criterion) => {
+    const rawValue = scores[criterion.id];
+
+    if (typeof rawValue !== 'number' || Number.isNaN(rawValue)) {
+      return sum;
+    }
+
+    const minScore = criterion.minScore ?? DEFAULT_MIN_SCORE;
+    const maxScore = criterion.maxScore ?? DEFAULT_MAX_SCORE;
+    const clampedValue = Math.min(Math.max(rawValue, minScore), maxScore);
+    const normalised = (clampedValue - minScore) / (maxScore - minScore);
+
+    return sum + normalised * (criterion.weight ?? 0);
+  }, 0);
+
+  const scaled = total * scale;
+  const factor = 10 ** precision;
+
+  return Math.round(scaled * factor) / factor;
 }
