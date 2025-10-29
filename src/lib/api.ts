@@ -102,8 +102,12 @@ export async function requestMagicLink({
   }
 
   const supabase = getSupabaseClient();
+
+  const appUrl = import.meta.env.VITE_APP_URL;
   const defaultRedirect =
-    redirectTo ?? (typeof window !== 'undefined' ? `${window.location.origin}/score` : undefined);
+    redirectTo ??
+    (appUrl ? `${appUrl}/score` : undefined) ??
+    (typeof window !== 'undefined' ? `${window.location.origin}/score` : undefined);
 
   const { error } = await supabase.auth.signInWithOtp({
     email: trimmedEmail,
