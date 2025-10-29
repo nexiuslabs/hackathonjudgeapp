@@ -1,6 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from '@supabase/supabase-js';
 
 import { DEFAULT_MAX_SCORE, DEFAULT_MIN_SCORE, fallbackScoringCriteria } from '@/config/scoring';
+import type { RankingEntry, RankingsConnectionState, RankingsSnapshot } from '@/types/rankings';
 import type { ScoringCriterion } from '@/types/scoring';
 
 export class AuthApiError extends Error {
@@ -14,6 +15,13 @@ export class ScoringApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
     super(message);
     this.name = 'ScoringApiError';
+  }
+}
+
+export class RankingsApiError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'RankingsApiError';
   }
 }
 
@@ -265,4 +273,246 @@ export function calculateWeightedTotal(
   const factor = 10 ** precision;
 
   return Math.round(scaled * factor) / factor;
+}
+
+export interface SupabaseRankingRow {
+  event_id: string;
+  team_id: string;
+  team_name: string;
+  total_score: number | string | null;
+  rank: number | string | null;
+  delta_to_prev?: number | string | null;
+  submitted_count?: number | string | null;
+  criterion_scores?: unknown;
+}
+
+export interface SupabaseRankingsMetaRow {
+  event_id: string;
+  unlocked_at?: string | null;
+  is_unlocked?: boolean | string | null;
+  unlock_message?: string | null;
+  unlock_eta?: string | null;
+  judges_completed?: number | string | null;
+  total_judges?: number | string | null;
+}
+
+function toNumber(value: number | string | null | undefined): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function toInteger(value: number | string | null | undefined): number | null {
+  const parsed = toNumber(value);
+  return parsed === null ? null : Math.trunc(parsed);
+}
+
+function toBoolean(value: unknown): boolean | null {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    if (value.toLowerCase() === 'true') {
+      return true;
+    }
+    if (value.toLowerCase() === 'false') {
+      return false;
+    }
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+
+  return null;
+}
+
+function parseCriterionScores(payload: unknown): RankingEntry['criterionScores'] {
+  if (!payload) {
+    return [];
+  }
+
+  let raw: unknown = payload;
+
+  if (typeof payload === 'string') {
+    try {
+      raw = JSON.parse(payload);
+    } catch (error) {
+      console.warn('Failed to parse ranking criterion_scores payload', error);
+      return [];
+    }
+  }
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .map((item) => ({
+      criterionId: typeof item?.criterion_id === 'string' ? item.criterion_id : '',
+      label: typeof item?.label === 'string' ? item.label : '',
+      averageScore: toNumber(item?.average_score) ?? 0,
+      weight: typeof item?.weight === 'number' ? item.weight : toNumber(item?.weight),
+    }))
+    .filter((score) => Boolean(score.criterionId && score.label));
+}
+
+function mapRankingRow(row: SupabaseRankingRow): RankingEntry {
+  const rank = toInteger(row.rank) ?? 0;
+  const totalScore = toNumber(row.total_score) ?? 0;
+
+  return {
+    teamId: row.team_id,
+    teamName: row.team_name,
+    rank,
+    totalScore,
+    deltaToPrev: toNumber(row.delta_to_prev),
+    submittedCount: toInteger(row.submitted_count),
+    criterionScores: parseCriterionScores(row.criterion_scores),
+  } satisfies RankingEntry;
+}
+
+export async function fetchRankings(eventId: string): Promise<RankingsSnapshot> {
+  if (!eventId) {
+    throw new RankingsApiError('An event identifier is required to load rankings.');
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+
+    const rankingsPromise = supabase
+      .from('rankings_view')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('rank', { ascending: true });
+
+    const metaPromise = supabase
+      .from('rankings_meta')
+      .select('*')
+      .eq('event_id', eventId)
+      .maybeSingle();
+
+    const [rankingsResult, metaResult] = await Promise.all([rankingsPromise, metaPromise]);
+
+    if (rankingsResult.error) {
+      throw rankingsResult.error;
+    }
+
+    if (metaResult.error && metaResult.error.code !== 'PGRST116') {
+      // `PGRST116` indicates the resource was not found; treat as optional metadata.
+      console.warn('Failed to load rankings metadata', metaResult.error);
+    }
+
+    const rows = (rankingsResult.data ?? []) as SupabaseRankingRow[];
+    const entries = rows.map(mapRankingRow);
+
+    const meta = (metaResult.data ?? null) as SupabaseRankingsMetaRow | null;
+
+    const explicitUnlock = toBoolean(meta?.is_unlocked);
+    const unlockedAtFlag = meta?.unlocked_at ? true : null;
+    const isUnlocked = explicitUnlock ?? unlockedAtFlag ?? entries.length > 0;
+
+    const snapshot: RankingsSnapshot = {
+      eventId,
+      fetchedAt: new Date().toISOString(),
+      entries,
+      isUnlocked,
+      unlockMessage: meta?.unlock_message ?? null,
+      unlockedAt: meta?.unlocked_at ?? null,
+      unlockEta: meta?.unlock_eta ?? null,
+      judgesCompleted: toInteger(meta?.judges_completed) ?? null,
+      totalJudges: toInteger(meta?.total_judges) ?? null,
+      source: 'network',
+    };
+
+    return snapshot;
+  } catch (error) {
+    if (error instanceof RankingsApiError) {
+      throw error;
+    }
+
+    if (error instanceof AuthApiError) {
+      throw new RankingsApiError(error.message, error);
+    }
+
+    throw new RankingsApiError('We were unable to load the latest rankings. Please try again.', error);
+  }
+}
+
+export interface SubscribeToRankingsOptions {
+  eventId: string;
+  onChange?: () => void;
+  onStatusChange?: (state: RankingsConnectionState) => void;
+  onError?: (error: RankingsApiError) => void;
+}
+
+export interface RankingsSubscription {
+  unsubscribe: () => Promise<void>;
+}
+
+export async function subscribeToRankings({
+  eventId,
+  onChange,
+  onError,
+  onStatusChange,
+}: SubscribeToRankingsOptions): Promise<RankingsSubscription | null> {
+  if (!eventId) {
+    return null;
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+
+    const channel = supabase
+      .channel(`rankings:${eventId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rankings_view', filter: `event_id=eq.${eventId}` },
+        () => {
+          onChange?.();
+        },
+      )
+      .subscribe((status) => {
+        let mapped: RankingsConnectionState = 'connecting';
+        switch (status) {
+          case REALTIME_SUBSCRIBE_STATES.SUBSCRIBED:
+            mapped = 'open';
+            break;
+          case REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR:
+          case REALTIME_SUBSCRIBE_STATES.TIMED_OUT:
+            mapped = 'error';
+            break;
+          case REALTIME_SUBSCRIBE_STATES.CLOSED:
+            mapped = 'closed';
+            break;
+          default:
+            mapped = 'connecting';
+        }
+
+        onStatusChange?.(mapped);
+      });
+
+    return {
+      async unsubscribe() {
+        await supabase.removeChannel(channel);
+      },
+    };
+  } catch (error) {
+    const apiError =
+      error instanceof RankingsApiError
+        ? error
+        : new RankingsApiError('Unable to subscribe to rankings updates.', error);
+    onError?.(apiError);
+    return null;
+  }
 }

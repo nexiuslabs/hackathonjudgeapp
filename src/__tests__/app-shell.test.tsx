@@ -16,6 +16,7 @@ describe('AppShell layout', () => {
 
     expect(screen.getByTestId('content')).toBeVisible();
     expect(screen.getByRole('link', { name: /score/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /rankings/i })).toBeInTheDocument();
 
     const nav = screen.getByRole('navigation');
     expect(nav.querySelector('.safe-area-inline')).not.toBeNull();
