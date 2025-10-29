@@ -163,6 +163,10 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 - Debounce 300ms → local queue (localStorage) → flush on reconnect; offline/online banners.
 - Duplicate suppression via upsert (judge_id+team_id).
 
+> **Decision [owner=Product][date=2024-02-09]:** Cap the offline autosave queue at 50 ballots per judge/event, pruning the oldest entry once the cap is exceeded, and require session-scoped AES-GCM encryption so cached payloads stay obfuscated on shared devices until they sync.
+
+> **Decision [owner=Engineering][date=2024-02-09]:** Standardize autosave retries on exponential backoff starting at 2s with jitter, doubling up to a 60s ceiling while the app remains open, and expose a manual retry trigger when the ceiling is reached.
+
 **Mobile AC:** airplane mode test passes; banner doesn’t block UI.
 
 ### F5 — Comments (P0)
