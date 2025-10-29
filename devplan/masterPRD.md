@@ -126,6 +126,8 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 ### F0 — Platform, Theme, PWA Shell (P0)
 - Vite React TS + Tailwind; theme tokens for colors/spacing.
 - **PWA**: manifest + service worker (cache shell & static assets).
+- > **Decision [owner=Codex Agent][date=2024-02-02]:** Maintain the authoritative theme token list directly in-repo (Tailwind + shared JSON) and mirror updates back to design tools as needed.
+- > **Decision [owner=Codex Agent][date=2024-02-02]:** Precache a curated JSON snapshot of essential brief content (criteria overview, schedule, finalist list) alongside the application shell; fetch dynamic updates on demand.
 
 **Mobile AC:** base viewport scales; safe‑area paddings; 44px targets; <250KB gz initial JS.
 
