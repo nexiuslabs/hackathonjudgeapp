@@ -55,6 +55,7 @@ const mockedUseScoringCriteria = vi.mocked(useScoringCriteria);
 
 describe('<ScorePage />', () => {
   beforeEach(() => {
+    window.localStorage.clear();
     mockRefetch.mockReset();
     mockedUseScoringCriteria.mockReturnValue({
       criteria: criteriaFixture,
@@ -67,6 +68,7 @@ describe('<ScorePage />', () => {
       refetch: mockRefetch,
     });
   });
+
 
   it('renders sliders for each scoring criterion and updates the total', async () => {
     render(<ScorePage />);
@@ -96,5 +98,49 @@ describe('<ScorePage />', () => {
         criteriaFixture.length,
       );
     });
+  });
+
+  it('autosaves comment drafts to local storage with trimmed content', async () => {
+    const user = userEvent.setup();
+    render(<ScorePage />);
+
+    const strengthField = screen.getByLabelText(/strengths to celebrate/i);
+    await user.type(strengthField, '  Incredible focus   ');
+
+    expect(strengthField).toHaveValue('  Incredible focus   ');
+
+    await waitFor(() => {
+      const stored = window.localStorage.getItem('hackathonjudgeapp.commentDraft:demo-event:team-aurora');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored ?? '{}');
+      expect(parsed.strength).toBe('Incredible focus');
+      expect(parsed.improvement).toBe('');
+    });
+  });
+
+  it('locks comment fields after submission until the judge unlocks them', async () => {
+    const user = userEvent.setup();
+    render(<ScorePage />);
+
+    const sliders = screen.getAllByRole('slider');
+    for (const slider of sliders) {
+      fireEvent.change(slider, { target: { value: '10' } });
+    }
+
+    const improvementField = screen.getByLabelText(/improvements to consider/i);
+    await user.type(improvementField, 'Polish the narrative arc.');
+
+    const submitButton = screen.getByRole('button', { name: /submit scores/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(improvementField).toBeDisabled();
+    });
+
+    const unlockButton = screen.getByRole('button', { name: /unlock comments/i });
+    await user.click(unlockButton);
+
+    expect(improvementField).not.toBeDisabled();
+    expect(screen.getByText(/Comment fields unlocked/i)).toBeInTheDocument();
   });
 });

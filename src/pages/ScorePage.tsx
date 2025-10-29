@@ -1,13 +1,15 @@
 import { AlertCircle, BookOpen, CheckCircle2, RefreshCcw, ShieldQuestion } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { ScoreCriteriaList } from '@/components/score/ScoreCriteriaList';
+import { CommentField } from '@/components/score/CommentField';
 import type { ScoreFieldStatus } from '@/components/score/ScoreSliderCard';
 import { ScoreSkeleton, ScoreStickyBarSkeleton } from '@/components/score/ScoreSkeleton';
 import { ScoreStickyBar, type ScoreFormStatus } from '@/components/score/ScoreStickyBar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateWeightedTotal } from '@/lib/api';
 import { useScoringCriteria } from '@/hooks/useScoringCriteria';
+import { useCommentFields } from '@/hooks/useCommentFields';
 
 const EVENT_ID = 'demo-event';
 const TEAM_ID = 'team-aurora';
@@ -19,7 +21,12 @@ export function ScorePage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [acknowledgement, setAcknowledgement] = useState<string | null>(null);
+  const [acknowledgement, setAcknowledgement] = useState<ReactNode>(null);
+  const [commentsLocked, setCommentsLocked] = useState(false);
+
+  const commentFields = useCommentFields({
+    storageKey: `${EVENT_ID}:${TEAM_ID}`,
+  });
 
   const criteriaSignature = useMemo(() => criteria.map((criterion) => criterion.id).join(':'), [criteria]);
 
@@ -84,18 +91,52 @@ export function ScorePage() {
     }
 
     setAcknowledgement(null);
+
+    const draftSaved = await commentFields.flush();
+    if (!draftSaved) {
+      setAcknowledgement(
+        'We were unable to lock your comments. Check your connection and try again before submitting.',
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     await new Promise((resolve) => setTimeout(resolve, 800));
     setIsSubmitting(false);
+    setCommentsLocked(true);
+
     setAcknowledgement(
-      isOffline
-        ? 'Scores queued while offline. They will sync automatically once you are reconnected.'
-        : 'Scores ready! Submit to operations when the full panel confirms.',
+      <div className="flex flex-col gap-3">
+        <p>
+          {isOffline
+            ? 'Scores queued while offline. They will sync automatically once you are reconnected.'
+            : 'Scores ready! Submit to operations when the full panel confirms.'}
+        </p>
+        <p className="text-sm text-neutral-300">
+          Comments are locked to preserve your submission. Unlock them below if you need to make an adjustment.
+        </p>
+        <button
+          type="button"
+          className="self-start rounded-full border border-surface-border/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200 transition hover:border-brand-400/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+          onClick={() => {
+            setCommentsLocked(false);
+            setAcknowledgement('Comment fields unlocked. Remember to re-submit after editing.');
+          }}
+        >
+          Unlock comments
+        </button>
+      </div>,
     );
   };
 
   const handleSaveDraft = () => {
-    setAcknowledgement('Progress saved locally. You can return to finish scoring anytime.');
+    void commentFields.flush().then((success) => {
+      setAcknowledgement(
+        success
+          ? 'Progress saved locally. You can return to finish scoring anytime.'
+          : 'We could not save your progress. Please check your connection.',
+      );
+    });
   };
 
   const onboardingHighlights = [
@@ -173,13 +214,71 @@ export function ScorePage() {
       {isLoading ? (
         <ScoreSkeleton />
       ) : (
-        <ScoreCriteriaList
-          criteria={criteria}
-          scores={scores}
-          statusMap={statusMap}
-          onScoreChange={handleScoreChange}
-          onFirstInteraction={handleFirstInteraction}
-        />
+        <>
+          <ScoreCriteriaList
+            criteria={criteria}
+            scores={scores}
+            statusMap={statusMap}
+            onScoreChange={handleScoreChange}
+            onFirstInteraction={handleFirstInteraction}
+          />
+
+          <section aria-labelledby="comment-section-title" className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <h2 id="comment-section-title" className="text-lg font-semibold text-white">
+                Optional judge comments
+              </h2>
+              <p className="text-sm text-neutral-300">
+                Share one quick win and one opportunity to improve. Notes stay private to operations and help finalists
+                understand their next steps.
+              </p>
+            </div>
+            <div className="grid gap-4">
+              <CommentField
+                label="Strengths to celebrate"
+                name="commentStrength"
+                value={commentFields.strength.value}
+                onChange={commentFields.strength.onChange}
+                helperText="What resonated most about this team’s approach? Highlight a specific moment, insight, or capability."
+                placeholder="Example: Their customer discovery was exhaustive and clearly informed the product roadmap."
+                characterCount={commentFields.strength.characterCount}
+                maxLength={commentFields.strength.maxLength}
+                warningThreshold={commentFields.strength.warningThreshold}
+                autosaveStatus={commentFields.status}
+                lastSavedAt={commentFields.lastSavedAt}
+                autosaveError={commentFields.error?.message ?? null}
+                validationMessage={
+                  commentFields.strength.isAtLimit
+                    ? 'Maximum length reached (1000 characters). Try trimming before adding more.'
+                    : null
+                }
+                disabled={commentsLocked}
+                readOnlyMessage="Submission locked. Unlock to make edits."
+              />
+              <CommentField
+                label="Improvements to consider"
+                name="commentImprovement"
+                value={commentFields.improvement.value}
+                onChange={commentFields.improvement.onChange}
+                helperText="Where could this team sharpen their story or execution before the next round? Offer actionable feedback."
+                placeholder="Example: Focus the demo on real user impact before diving into roadmap milestones."
+                characterCount={commentFields.improvement.characterCount}
+                maxLength={commentFields.improvement.maxLength}
+                warningThreshold={commentFields.improvement.warningThreshold}
+                autosaveStatus={commentFields.status}
+                lastSavedAt={commentFields.lastSavedAt}
+                autosaveError={commentFields.error?.message ?? null}
+                validationMessage={
+                  commentFields.improvement.isAtLimit
+                    ? 'Maximum length reached (1000 characters). Try trimming before adding more.'
+                    : null
+                }
+                disabled={commentsLocked}
+                readOnlyMessage="Submission locked. Unlock to make edits."
+              />
+            </div>
+          </section>
+        </>
       )}
 
       {acknowledgement ? (
@@ -201,7 +300,7 @@ export function ScorePage() {
           status={formStatus}
           onSubmit={handleSubmit}
           onSaveDraft={handleSaveDraft}
-          lastUpdated={lastUpdated}
+          lastUpdated={commentFields.lastSavedAt ?? lastUpdated}
           isOffline={isOffline}
         />
       )}
