@@ -199,6 +199,10 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 - Grid: Judge×Team completion, toggles, timers, exports.
 - Tablet first; on phones, collapse grid to lists w/ sticky tool row.
 
+> **Decision [owner=Product][date=2024-02-12]:** Limit the completion grid to submission-status indicators by default, surfacing per-criterion detail via optional drill-ins to maintain readability and protect score visibility. 
+> **Decision [owner=Product][date=2024-02-12]:** Support multi-select filters for team track, judge cohort, and status out of the box so large events remain manageable on tablet and phone layouts. 
+> **Decision [owner=Product][date=2024-02-12]:** Ship lock/unlock and timer controls within F8 while deferring normalization and export toggles to their dedicated feature specs to avoid premature coupling.
+
 **Mobile AC:** Primary controls reachable with thumb; no horizontal scroll.
 
 ### F9 — Central Timer Sync (P1)
