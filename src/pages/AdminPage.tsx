@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Activity,
@@ -15,8 +15,12 @@ import {
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { TimerControlPanel } from '@/components/timer/TimerControlPanel';
+import { TimerShareSheet } from '@/components/timer/TimerShareSheet';
 import { useAdminEventContext } from '@/contexts/AdminEventContext';
+import { useEventTimer } from '@/hooks/useEventTimer';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useTimerControls } from '@/hooks/useTimerControls';
 import { cn } from '@/lib/utils';
 import type { PermissionRole } from '@/types/permissions';
 
@@ -90,6 +94,14 @@ function formatRelativeTime(value: Date): string {
 export function AdminPage() {
   const { event, isLoading, isFallback, error, lastLoadedAt, refresh } = useAdminEventContext();
   const permissions = usePermissions();
+  const eventId = event?.id ?? 'demo-event';
+  const [isShareSheetOpen, setShareSheetOpen] = useState(false);
+  const timer = useEventTimer({ eventId, enabled: Boolean(eventId) });
+  const timerControls = useTimerControls({
+    eventId,
+    timer,
+    controlOwner: permissions.fullName ?? permissions.email ?? null,
+  });
 
   const scheduleLabel = useMemo(
     () => formatSchedule(event?.startAt ?? null, event?.endAt ?? null, event?.timezone ?? null),
@@ -199,6 +211,22 @@ export function AdminPage() {
           </div>
         ) : null}
       </section>
+
+      <TimerControlPanel
+        timer={timer}
+        controls={timerControls}
+        onOpenShare={() => setShareSheetOpen(true)}
+      />
+
+      <TimerShareSheet
+        open={isShareSheetOpen}
+        onOpenChange={setShareSheetOpen}
+        shareLink={timerControls.share.link}
+        isGenerating={timerControls.share.isGenerating}
+        isFallback={timerControls.share.isFallback}
+        error={timerControls.share.error}
+        onGenerate={timerControls.share.generate}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card aria-busy={isLoading} className={cn(isLoading && 'animate-pulse')}>

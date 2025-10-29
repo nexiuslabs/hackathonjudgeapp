@@ -10,6 +10,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage';
 import { ScorePage } from '@/pages/ScorePage';
 import { AdminPage } from '@/pages/AdminPage';
 import { AdminAccessDenied } from '@/pages/AdminAccessDenied';
+import { TimerRoute } from '@/pages/TimerRoute';
 import { ADMIN_ROLES } from '@/types/permissions';
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <Route path="/brief" element={<BriefPage />} />
         <Route path="/score" element={<ScorePage />} />
         <Route path="/rankings" element={<RankingsPage />} />
+        <Route path="/timer" element={<TimerRoute />} />
         <Route
           path="/admin"
           element={

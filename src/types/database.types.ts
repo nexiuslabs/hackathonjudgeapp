@@ -50,6 +50,29 @@ export interface Database {
           updated_at?: string | null
         }
       }
+      auth_event_logs: {
+        Row: {
+          id: string
+          created_at: string
+          type: string
+          detail: string | null
+          email: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          type: string
+          detail?: string | null
+          email?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          type?: string
+          detail?: string | null
+          email?: string | null
+        }
+      }
       brief_content: {
         Row: {
           id: string
@@ -74,6 +97,70 @@ export interface Database {
           is_published?: boolean | null
           created_at?: string | null
           updated_at?: string | null
+        }
+      }
+      event_timer_presets: {
+        Row: {
+          id: string
+          event_id: string
+          label: string
+          duration_seconds: number | null
+          is_default: boolean | null
+          archived_at: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          label: string
+          duration_seconds?: number | null
+          is_default?: boolean | null
+          archived_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          label?: string
+          duration_seconds?: number | null
+          is_default?: boolean | null
+          archived_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      event_timer_state: {
+        Row: {
+          event_id: string
+          phase: Database['public']['Enums']['timer_phase'] | null
+          duration_seconds: number | null
+          started_at: string | null
+          paused_at: string | null
+          control_owner: string | null
+          updated_at: string | null
+          revision: number | null
+        }
+        Insert: {
+          event_id: string
+          phase?: Database['public']['Enums']['timer_phase'] | null
+          duration_seconds?: number | null
+          started_at?: string | null
+          paused_at?: string | null
+          control_owner?: string | null
+          updated_at?: string | null
+          revision?: number | null
+        }
+        Update: {
+          event_id?: string
+          phase?: Database['public']['Enums']['timer_phase'] | null
+          duration_seconds?: number | null
+          started_at?: string | null
+          paused_at?: string | null
+          control_owner?: string | null
+          updated_at?: string | null
+          revision?: number | null
         }
       }
       judge_profiles: {
@@ -643,6 +730,37 @@ export interface Database {
         }
         Returns: Json
       }
+      call_timer_action: {
+        Args: {
+          event_id: string
+          action: string
+          preset_id?: string | null
+          duration_seconds?: number | null
+        }
+        Returns: Json
+      }
+      generate_timer_share_link: {
+        Args: {
+          event_id: string
+          token_ttl_minutes?: number | null
+        }
+        Returns: {
+          url: string
+          token: string
+          expires_at: string
+          created_at: string
+        }
+      }
+      validate_timer_share_token: {
+        Args: {
+          token: string
+        }
+        Returns: {
+          event_id: string
+          expires_at: string
+          is_expired: boolean
+        }
+      }
       lock_event: {
         Args: {
           p_event_id: string
@@ -655,6 +773,9 @@ export interface Database {
         }
         Returns: Json
       }
+    }
+    Enums: {
+      timer_phase: 'idle' | 'running' | 'paused' | 'completed'
     }
   }
 }

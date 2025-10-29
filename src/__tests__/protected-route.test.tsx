@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { UsePermissionsResult } from '@/hooks/usePermissions';
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute';
 
-const usePermissionsMock = vi.hoisted(() => vi.fn<UsePermissionsResult, []>());
+const usePermissionsMock = vi.hoisted(() => vi.fn<[], UsePermissionsResult>());
 
 vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => usePermissionsMock(),

@@ -7,8 +7,10 @@ import type { ScoreFieldStatus } from '@/components/score/ScoreSliderCard';
 import { ScoreSkeleton, ScoreStickyBarSkeleton } from '@/components/score/ScoreSkeleton';
 import { ScoreStickyBar, type ScoreFormStatus } from '@/components/score/ScoreStickyBar';
 import { UnlockRequestSheet } from '@/components/score/UnlockRequestSheet';
+import { TimerBadge } from '@/components/timer/TimerBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateWeightedTotal } from '@/lib/api';
+import { useEventTimer } from '@/hooks/useEventTimer';
 import { useScoringCriteria } from '@/hooks/useScoringCriteria';
 import { useCommentFields } from '@/hooks/useCommentFields';
 import { useBallotLifecycle } from '@/hooks/useBallotLifecycle';
@@ -18,6 +20,7 @@ const TEAM_ID = 'team-aurora';
 
 export function ScorePage() {
   const { criteria, isLoading, error, isOffline, lastUpdated, refetch } = useScoringCriteria({ eventId: EVENT_ID });
+  const timer = useEventTimer({ eventId: EVENT_ID });
 
   const [scores, setScores] = useState<Record<string, number | undefined>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -288,6 +291,17 @@ export function ScorePage() {
       <a href="#score-submit" className="sr-only focus:not-sr-only focus:rounded-full focus:bg-brand-500/20 focus:px-4 focus:py-2 focus:text-white">
         Skip to submit controls
       </a>
+      <TimerBadge
+        remainingMs={timer.remainingMs}
+        phase={timer.snapshot?.phase ?? 'idle'}
+        connectionState={timer.connectionState}
+        isOffline={timer.isOffline}
+        driftMs={timer.driftMs}
+        lastSyncedAt={timer.lastSyncedAt}
+        controlOwner={timer.snapshot?.controlOwner ?? undefined}
+        disabled
+        className="self-start"
+      />
       <Card>
         <CardHeader>
           <CardTitle>Scoring workspace</CardTitle>

@@ -1,10 +1,20 @@
 import { createClient, REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from '@supabase/supabase-js';
 
 import { DEFAULT_MAX_SCORE, DEFAULT_MIN_SCORE, fallbackScoringCriteria } from '@/config/scoring';
+import { createFallbackTimerSnapshot, fallbackTimerPresets } from '@/config/timer-fallback';
 import type { RankingEntry, RankingsConnectionState, RankingsSnapshot } from '@/types/rankings';
 import type { ScoringCriterion } from '@/types/scoring';
 import type { Database } from '@/types/database.types';
 import type { AdminEventSnapshot } from '@/types/admin';
+import type {
+  TimerConnectionState,
+  TimerControlAction,
+  TimerPhase,
+  TimerPreset,
+  TimerShareLink,
+  TimerSnapshot,
+  TimerTokenValidationResult,
+} from '@/types/timer';
 
 export class AuthApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -31,6 +41,13 @@ export class AdminApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
     super(message);
     this.name = 'AdminApiError';
+  }
+}
+
+export class TimerApiError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = 'TimerApiError';
   }
 }
 
@@ -168,10 +185,13 @@ export interface LogAuthEventPayload {
 
 export async function logAuthEvent(payload: LogAuthEventPayload) {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.from('auth_event_logs').insert({
+  const entry: Database['public']['Tables']['auth_event_logs']['Insert'] = {
     ...payload,
     created_at: new Date().toISOString(),
-  });
+  };
+  const { error } = await (supabase.from('auth_event_logs') as unknown as {
+    insert: (value: typeof entry) => Promise<{ error: unknown }>;
+  }).insert(entry);
 
   if (error) {
     throw new AuthApiError('Failed to record the authentication event.', error);
@@ -598,8 +618,14 @@ function parseAdminEventMetadata(metadata: unknown): ParsedAdminEventMetadata {
       : typeof record.endAt === 'string'
         ? record.endAt
         : null;
-  const totalJudges = toInteger(record.total_judges) ?? toInteger(record.judge_count) ?? null;
-  const totalTeams = toInteger(record.total_teams) ?? toInteger(record.team_count) ?? null;
+  const totalJudges =
+    toInteger(record.total_judges as string | number | null | undefined) ??
+    toInteger(record.judge_count as string | number | null | undefined) ??
+    null;
+  const totalTeams =
+    toInteger(record.total_teams as string | number | null | undefined) ??
+    toInteger(record.team_count as string | number | null | undefined) ??
+    null;
   const code =
     typeof record.code === 'string'
       ? record.code
@@ -653,13 +679,14 @@ export async function fetchAdminEventSummary({
       } satisfies AdminEventSummaryResult;
     }
 
-    const metadata = parseAdminEventMetadata(data.metadata);
+    const row = data as Database['public']['Tables']['events']['Row'];
+    const metadata = parseAdminEventMetadata(row.metadata);
 
     const snapshot: AdminEventSnapshot = {
-      id: data.id,
-      name: data.name,
-      description: data.description ?? metadata.description ?? null,
-      code: metadata.code ?? data.id,
+      id: row.id,
+      name: row.name,
+      description: row.description ?? metadata.description ?? null,
+      code: metadata.code ?? row.id,
       timezone: metadata.timezone,
       location: metadata.location,
       startAt: metadata.startAt,
@@ -692,5 +719,420 @@ export async function fetchAdminEventSummary({
       isFallback: true,
       error: adminError,
     } satisfies AdminEventSummaryResult;
+  }
+}
+
+interface SupabaseTimerStateRow {
+  event_id: string;
+  phase: TimerPhase | null;
+  duration_seconds: number | null;
+  started_at: string | null;
+  paused_at: string | null;
+  control_owner: string | null;
+  updated_at: string | null;
+  revision: number | string | null;
+}
+
+interface SupabaseTimerPresetRow {
+  id: string;
+  event_id: string;
+  label: string;
+  duration_seconds: number | null;
+  is_default: boolean | null;
+  archived_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+interface SupabaseTimerShareLinkRow {
+  url: string;
+  token: string;
+  expires_at: string;
+  created_at: string;
+}
+
+function mapTimerState(row: SupabaseTimerStateRow, source: TimerSnapshot['source'] = 'network'): TimerSnapshot {
+  const now = new Date().toISOString();
+  const revisionRaw = row.revision;
+  const revision = typeof revisionRaw === 'number' ? revisionRaw : parseInt(revisionRaw ?? '0', 10) || 0;
+
+  return {
+    eventId: row.event_id,
+    phase: (row.phase ?? 'idle') as TimerPhase,
+    durationSeconds: row.duration_seconds ?? 0,
+    startedAt: row.started_at,
+    pausedAt: row.paused_at,
+    controlOwner: row.control_owner,
+    updatedAt: row.updated_at ?? now,
+    revision,
+    fetchedAt: now,
+    source,
+  } satisfies TimerSnapshot;
+}
+
+function mapTimerPreset(row: SupabaseTimerPresetRow): TimerPreset {
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    label: row.label,
+    durationSeconds: row.duration_seconds ?? 0,
+    isDefault: Boolean(row.is_default),
+    archivedAt: row.archived_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  } satisfies TimerPreset;
+}
+
+function mapTimerShareLink(row: SupabaseTimerShareLinkRow): TimerShareLink {
+  return {
+    url: row.url,
+    token: row.token,
+    expiresAt: row.expires_at,
+    createdAt: row.created_at,
+  } satisfies TimerShareLink;
+}
+
+export interface FetchTimerStateOptions {
+  eventId: string;
+}
+
+export interface FetchTimerStateResult {
+  snapshot: TimerSnapshot;
+  isFallback: boolean;
+  error?: TimerApiError;
+}
+
+export async function fetchTimerState({ eventId }: FetchTimerStateOptions): Promise<FetchTimerStateResult> {
+  if (!eventId) {
+    throw new TimerApiError('An event identifier is required to load the timer state.');
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const query = supabase
+      .from('event_timer_state')
+      .select('*')
+      .eq('event_id', eventId)
+      .maybeSingle();
+
+    const { data, error } = await query;
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (!data) {
+      return {
+        snapshot: createFallbackTimerSnapshot({ eventId }),
+        isFallback: true,
+      } satisfies FetchTimerStateResult;
+    }
+
+    return {
+      snapshot: mapTimerState(data as SupabaseTimerStateRow),
+      isFallback: false,
+    } satisfies FetchTimerStateResult;
+  } catch (error) {
+    const timerError =
+      error instanceof TimerApiError
+        ? error
+        : new TimerApiError('Unable to load the live timer state.', error);
+
+    return {
+      snapshot: createFallbackTimerSnapshot({ eventId }),
+      isFallback: true,
+      error: timerError,
+    } satisfies FetchTimerStateResult;
+  }
+}
+
+export interface SubscribeToTimerStateOptions {
+  eventId: string;
+  onUpdate?: (snapshot: TimerSnapshot) => void;
+  onStatusChange?: (state: TimerConnectionState) => void;
+  onError?: (error: TimerApiError) => void;
+}
+
+export interface TimerSubscription {
+  unsubscribe: () => Promise<void>;
+}
+
+export async function subscribeToTimerState({
+  eventId,
+  onUpdate,
+  onStatusChange,
+  onError,
+}: SubscribeToTimerStateOptions): Promise<TimerSubscription | null> {
+  if (!eventId) {
+    return null;
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+
+    const channel = supabase
+      .channel(`timer:${eventId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'event_timer_state', filter: `event_id=eq.${eventId}` },
+        (payload) => {
+          const record = (payload.new ?? payload.old) as SupabaseTimerStateRow | null;
+          if (record) {
+            onUpdate?.(mapTimerState(record));
+          }
+        },
+      )
+      .subscribe((status) => {
+        let mapped: TimerConnectionState = 'connecting';
+        switch (status) {
+          case REALTIME_SUBSCRIBE_STATES.SUBSCRIBED:
+            mapped = 'open';
+            break;
+          case REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR:
+          case REALTIME_SUBSCRIBE_STATES.TIMED_OUT:
+            mapped = 'error';
+            break;
+          case REALTIME_SUBSCRIBE_STATES.CLOSED:
+            mapped = 'closed';
+            break;
+          default:
+            mapped = 'connecting';
+        }
+
+        onStatusChange?.(mapped);
+      });
+
+    return {
+      async unsubscribe() {
+        await supabase.removeChannel(channel);
+      },
+    } satisfies TimerSubscription;
+  } catch (error) {
+    const timerError =
+      error instanceof TimerApiError
+        ? error
+        : new TimerApiError('Unable to subscribe to timer updates.', error);
+    onError?.(timerError);
+    return null;
+  }
+}
+
+export interface ListTimerPresetsOptions {
+  eventId: string;
+  includeArchived?: boolean;
+}
+
+export async function listTimerPresets({
+  eventId,
+  includeArchived = false,
+}: ListTimerPresetsOptions): Promise<TimerPreset[]> {
+  if (!eventId) {
+    throw new TimerApiError('An event identifier is required to load timer presets.');
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    let query = supabase.from('event_timer_presets').select('*').eq('event_id', eventId);
+
+    if (!includeArchived) {
+      query = query.is('archived_at', null);
+    }
+
+    const { data, error } = await query
+      .order('is_default', { ascending: false })
+      .order('duration_seconds', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data ?? []).map((row) => mapTimerPreset(row as SupabaseTimerPresetRow));
+  } catch (error) {
+    const timerError =
+      error instanceof TimerApiError
+        ? error
+        : new TimerApiError('Unable to load timer presets.', error);
+    console.warn(timerError.message, timerError.cause);
+    return fallbackTimerPresets.filter((preset) => preset.eventId === eventId || preset.eventId === 'demo-event');
+  }
+}
+
+export interface UpsertTimerPresetOptions {
+  preset: TimerPreset;
+}
+
+export async function upsertTimerPreset({ preset }: UpsertTimerPresetOptions): Promise<TimerPreset> {
+  try {
+    const supabase = getSupabaseClient();
+    const record: Database['public']['Tables']['event_timer_presets']['Insert'] = {
+      id: preset.id,
+      event_id: preset.eventId,
+      label: preset.label,
+      duration_seconds: preset.durationSeconds,
+      is_default: preset.isDefault,
+      archived_at: preset.archivedAt,
+    };
+    const { data, error } = await (supabase.from('event_timer_presets') as unknown as {
+      upsert: (
+        value: Database['public']['Tables']['event_timer_presets']['Insert'],
+      ) => {
+        select: (columns: '*') => { single: () => Promise<{ data: unknown; error: unknown }> };
+      };
+    })
+      .upsert(record)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return mapTimerPreset(data as SupabaseTimerPresetRow);
+  } catch (error) {
+    throw error instanceof TimerApiError
+      ? error
+      : new TimerApiError('Unable to save the timer preset.', error);
+  }
+}
+
+export interface TriggerTimerActionOptions {
+  eventId: string;
+  action: TimerControlAction;
+  presetId?: string | null;
+  durationSeconds?: number | null;
+}
+
+export async function triggerTimerAction({
+  eventId,
+  action,
+  presetId,
+  durationSeconds,
+}: TriggerTimerActionOptions): Promise<TimerSnapshot> {
+  if (!eventId) {
+    throw new TimerApiError('An event identifier is required to control the timer.');
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const args: Database['public']['Functions']['call_timer_action']['Args'] = {
+      event_id: eventId,
+      action,
+      preset_id: presetId ?? null,
+      duration_seconds: durationSeconds ?? null,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc('call_timer_action' as any, args as any) as any);
+
+    if (error) {
+      throw error;
+    }
+
+    const payload = (data as Record<string, unknown>) ?? {};
+    const state = (payload.state ?? payload.timer_state ?? payload) as SupabaseTimerStateRow;
+    return mapTimerState(state);
+  } catch (error) {
+    throw error instanceof TimerApiError
+      ? error
+      : new TimerApiError('Unable to process the timer action. Please try again.', error);
+  }
+}
+
+export interface GenerateTimerShareLinkOptions {
+  eventId: string;
+  tokenTtlMinutes?: number;
+}
+
+export interface GenerateTimerShareLinkResult {
+  link: TimerShareLink;
+  isFallback: boolean;
+  error?: TimerApiError;
+}
+
+export async function generateTimerShareLink({
+  eventId,
+  tokenTtlMinutes = 30,
+}: GenerateTimerShareLinkOptions): Promise<GenerateTimerShareLinkResult> {
+  if (!eventId) {
+    throw new TimerApiError('An event identifier is required to generate a share link.');
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const args: Database['public']['Functions']['generate_timer_share_link']['Args'] = {
+      event_id: eventId,
+      token_ttl_minutes: tokenTtlMinutes,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc('generate_timer_share_link' as any, args as any) as any);
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      link: mapTimerShareLink(data as SupabaseTimerShareLinkRow),
+      isFallback: false,
+    } satisfies GenerateTimerShareLinkResult;
+  } catch (error) {
+    const timerError =
+      error instanceof TimerApiError
+        ? error
+        : new TimerApiError('Unable to generate a timer share link.', error);
+
+    const createdAt = new Date();
+    const expiresAt = new Date(createdAt.getTime() + tokenTtlMinutes * 60_000);
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://example.com';
+    const fallbackToken = `${eventId}-demo-token`;
+    const url = `${origin}/timer?token=${encodeURIComponent(fallbackToken)}&eventId=${encodeURIComponent(eventId)}`;
+
+    return {
+      link: {
+        url,
+        token: fallbackToken,
+        createdAt: createdAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      },
+      isFallback: true,
+      error: timerError,
+    } satisfies GenerateTimerShareLinkResult;
+  }
+}
+
+export interface ValidateTimerShareTokenOptions {
+  token: string;
+}
+
+export async function validateTimerShareToken({ token }: ValidateTimerShareTokenOptions): Promise<TimerTokenValidationResult> {
+  if (!token) {
+    throw new TimerApiError('A share token is required to access the timer display.');
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const args: Database['public']['Functions']['validate_timer_share_token']['Args'] = {
+      token,
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase.rpc('validate_timer_share_token' as any, args as any) as any);
+
+    if (error) {
+      throw error;
+    }
+
+    const payload = (data as Record<string, unknown>) ?? {};
+    return {
+      eventId: String(payload.event_id ?? ''),
+      token,
+      expiresAt: String(payload.expires_at ?? new Date().toISOString()),
+      isExpired: Boolean(payload.is_expired ?? false),
+    } satisfies TimerTokenValidationResult;
+  } catch {
+    const now = new Date();
+    return {
+      eventId: 'demo-event',
+      token,
+      expiresAt: new Date(now.getTime() + 30 * 60_000).toISOString(),
+      isExpired: false,
+    } satisfies TimerTokenValidationResult;
   }
 }
