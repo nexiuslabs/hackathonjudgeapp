@@ -217,6 +217,8 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 ### F10 — Normalization & Drop Extremes (P1)
 - Toggles with explanation tooltips; banner “Normalization Active” if on.
 - Drop hi/lo only if ≥5 judges.
+<!-- TODO[F10][owner=Product][due=2024-02-15]: Confirm the exact normalization formula (e.g., z-score vs. min-max) and whether criterion weights are applied before or after normalization when the toggle is active. -->
+<!-- TODO[F10][owner=ScoringOps][due=2024-02-18]: Specify how drop-high/low interacts with partial judge submissions and whether backup judges are excluded automatically when quorum is met. -->
 
 **Mobile AC:** Toggle switches large; info sheets usable in bottom sheet.
 
