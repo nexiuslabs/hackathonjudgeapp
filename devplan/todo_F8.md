@@ -1,6 +1,6 @@
 ---
 owner: Codex Agent
-status: not_started
+status: in_progress
 last_reviewed: 2024-02-13
 ---
 
@@ -12,7 +12,8 @@ last_reviewed: 2024-02-13
 - [x] (Owner: Product | Due: 2024-02-20) Decide which admin actions ship with F8 vs later features (normalization, exports, timers) to prevent scope overlap. ✅ 2024-02-13 — Limit F8 scope to lock/unlock and timer controls; defer normalization/export toggles. ↗️ See [Master PRD — F8](masterPRD.md#f8--admin-console-responsive-p0) decision & [Feature PRD — Decisions & Rationale](featurePRD_F8.md#decisions--rationale).
 
 ## Implementation Tasks
-- [ ] (Owner: Codex Agent | Due: 2024-02-26) Scaffold `/admin` route with RBAC guard, event context provider, and responsive layout shell. ↗️ See [Dev Plan — Architecture & Flow Overview](devplan_F8.md#architecture--flow-overview).
+- [x] (Owner: Codex Agent | Due: 2024-02-26) Scaffold `/admin` route with RBAC guard, event context provider, and responsive layout shell. ↗️ See [Dev Plan — Architecture & Flow Overview](devplan_F8.md#architecture--flow-overview).
+  - ✅ 2024-08-21 — Added `ProtectedRoute` with permissions hook, `AdminEventProvider`, and responsive admin layout shell seeded with realtime/timer placeholders and fallback messaging.
 - [ ] (Owner: Backend | Due: 2024-02-22) Provide aggregated progress view/table and timer state schema updates, plus RPCs for unlock/timer/lock actions. ↗️ See [Dev Plan — Backend & Migrations](devplan_F8.md#backend--migrations).
 - [ ] (Owner: Codex Agent | Due: 2024-02-27) Implement `useAdminConsoleData` hook, realtime subscriptions, and optimistic state handling. ↗️ See [Dev Plan — Data & State Management](devplan_F8.md#data--state-management) & [API & Integration Design](devplan_F8.md#api--integration-design).
 - [ ] (Owner: Codex Agent | Due: 2024-02-28) Build UI components (`ProgressGrid`, `ProgressList`, `AdminControlBar`, `UnlockQueueDrawer`, `TimerCard`) with responsive behaviors and accessibility instrumentation. ↗️ See [Dev Plan — UI States & UX Messaging](devplan_F8.md#ui-states--ux-messaging) & [Feature PRD — Acceptance Criteria](featurePRD_F8.md#acceptance-criteria).
