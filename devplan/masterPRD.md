@@ -209,6 +209,9 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 - Admin controls Start 7:00 / 5:00; pause/resume/reset; push epoch for drift correction.
 - Optional **orientation lock** for timer view (landscape).
 
+> **Decision [owner=Codex Agent][date=2024-02-10]:** Support configurable presets per event with defaults of 7:00 pitch and 5:00 Q&A so organizers can adjust without code changes; expose preset management via the admin console backlog if not in MVP.
+> **Decision [owner=Codex Agent][date=2024-02-10]:** Primary synchronized timer view lives in the admin console with a shareable full-screen read-only variant for external displays; judges continue to see a compact badge within their flow.
+
 **Mobile AC:** Timer digits ≥ 40px; high contrast; haptic tick optional.
 
 ### F10 — Normalization & Drop Extremes (P1)
