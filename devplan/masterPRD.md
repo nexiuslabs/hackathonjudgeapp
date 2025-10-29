@@ -172,6 +172,9 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 ### F5 — Comments (P0)
 - Two optional fields; mobile keyboards with sentence case; 140‑char guide.
 
+> **Decision [owner=Product][date=2024-02-11]:** Persist Strength and Improvement feedback as dedicated Supabase columns (`comment_strength`, `comment_improvement`) so exports and analytics can consume them without JSON parsing.
+> **Decision [owner=UX][date=2024-02-11]:** Manage helper text, placeholders, and tone guidance for comment inputs via Supabase content tables with cached fallbacks, enabling rapid updates without code changes.
+
 **Mobile AC:** inputs don’t jump when keyboard opens; page scroll locked to input context.
 
 ### F6 — Submit & Locking (+ Unlock Requests) (P0)
