@@ -3,6 +3,7 @@ import { createClient, REALTIME_SUBSCRIBE_STATES, type SupabaseClient } from '@s
 import { DEFAULT_MAX_SCORE, DEFAULT_MIN_SCORE, fallbackScoringCriteria } from '@/config/scoring';
 import type { RankingEntry, RankingsConnectionState, RankingsSnapshot } from '@/types/rankings';
 import type { ScoringCriterion } from '@/types/scoring';
+import type { Database } from '@/types/database.types';
 
 export class AuthApiError extends Error {
   constructor(message: string, public readonly cause?: unknown) {
@@ -25,9 +26,9 @@ export class RankingsApiError extends Error {
   }
 }
 
-let client: SupabaseClient | undefined;
+let client: SupabaseClient<Database> | undefined;
 
-export function setSupabaseClient(instance: SupabaseClient | undefined) {
+export function setSupabaseClient(instance: SupabaseClient<Database> | undefined) {
   client = instance;
 }
 
@@ -35,7 +36,7 @@ export function resetSupabaseClient() {
   client = undefined;
 }
 
-export function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(): SupabaseClient<Database> {
   if (client) {
     return client;
   }
@@ -47,7 +48,7 @@ export function getSupabaseClient(): SupabaseClient {
     throw new AuthApiError('Supabase credentials are not configured.');
   }
 
-  client = createClient(url, key, {
+  client = createClient<Database>(url, key, {
     auth: {
       autoRefreshToken: true,
       detectSessionInUrl: true,
