@@ -153,6 +153,9 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 ### F3 — Judge Scoring UI (P0)
 - 4 sliders (1–10) with “what good looks like”; **sticky Submit bar**; weighted total preview.
 - Keyboard‑accessible; left/right swipe not required.
+> **Decision [owner=Codex Agent][date=2024-02-07]:** Source slider labels and helper text directly from the judging brief Supabase content to maintain a single, easily updatable content surface.
+> **Decision [owner=Codex Agent][date=2024-02-07]:** Display the weighted total using the official per-criterion weights supplied by ScoringOps so the preview matches backend calculations exactly.
+> **Decision [owner=Codex Agent][date=2024-02-07]:** Require judges to make an explicit first interaction before a slider locks in a value, preventing accidental default scores while preserving fast adjustments thereafter.
 
 **Mobile AC:** one‑hand use; no accidental scroll traps; Submit visible w/o extra scroll.
 
