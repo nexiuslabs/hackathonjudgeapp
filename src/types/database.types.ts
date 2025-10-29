@@ -472,40 +472,75 @@ export interface Database {
           refreshed_at?: string | null
         }
       }
-      admin_timer_state: {
+      event_timer_presets: {
         Row: {
           id: string
           event_id: string
-          mode: 'idle' | 'running' | 'paused'
-          remaining_seconds: number
-          total_seconds: number
-          started_at: string | null
-          paused_at: string | null
-          control_owner: string | null
+          label: string
+          duration_seconds: number
+          ordering: number | null
+          archived_at: string | null
           created_at: string | null
           updated_at: string | null
         }
         Insert: {
           id?: string
           event_id: string
-          mode?: 'idle' | 'running' | 'paused'
-          remaining_seconds?: number
-          total_seconds?: number
-          started_at?: string | null
-          paused_at?: string | null
-          control_owner?: string | null
+          label: string
+          duration_seconds: number
+          ordering?: number | null
+          archived_at?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
         Update: {
           id?: string
           event_id?: string
-          mode?: 'idle' | 'running' | 'paused'
-          remaining_seconds?: number
-          total_seconds?: number
+          label?: string
+          duration_seconds?: number
+          ordering?: number | null
+          archived_at?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      event_timer_state: {
+        Row: {
+          id: string
+          event_id: string
+          phase: 'idle' | 'running' | 'paused' | 'finished'
+          duration_seconds: number
+          started_at: string | null
+          paused_at: string | null
+          elapsed_seconds: number | null
+          control_owner: string | null
+          revision: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          phase?: 'idle' | 'running' | 'paused' | 'finished'
+          duration_seconds?: number
           started_at?: string | null
           paused_at?: string | null
+          elapsed_seconds?: number | null
           control_owner?: string | null
+          revision?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          phase?: 'idle' | 'running' | 'paused' | 'finished'
+          duration_seconds?: number
+          started_at?: string | null
+          paused_at?: string | null
+          elapsed_seconds?: number | null
+          control_owner?: string | null
+          revision?: number | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -590,6 +625,23 @@ export interface Database {
           handled_at: string | null
           handled_by: string | null
           notes: string | null
+        }
+      }
+      event_timer_state_with_expiry: {
+        Row: {
+          id: string | null
+          event_id: string | null
+          phase: 'idle' | 'running' | 'paused' | 'finished' | null
+          duration_seconds: number | null
+          started_at: string | null
+          paused_at: string | null
+          elapsed_seconds: number | null
+          control_owner: string | null
+          revision: number | null
+          created_at: string | null
+          updated_at: string | null
+          expires_at: string | null
+          remaining_seconds: number | null
         }
       }
     }
@@ -770,6 +822,33 @@ export interface Database {
       unlock_event: {
         Args: {
           p_event_id: string
+        }
+        Returns: Json
+      }
+      call_timer_action: {
+        Args: {
+          p_event_id: string
+          p_action: 'start' | 'pause' | 'resume' | 'reset' | 'finish'
+          p_preset_id?: string | null
+          p_actor?: string | null
+        }
+        Returns: Json
+      }
+      get_timer_remaining_seconds: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: number | null
+      }
+      archive_timer_preset: {
+        Args: {
+          p_preset_id: string
+        }
+        Returns: Json
+      }
+      restore_timer_preset: {
+        Args: {
+          p_preset_id: string
         }
         Returns: Json
       }
