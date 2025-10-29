@@ -1,7 +1,7 @@
 ---
 owner: Codex Agent
 status: in_progress
-last_reviewed: 2024-08-24
+last_reviewed: 2025-02-14
 ---
 
 # TODO — F6 Submit & Locking (+ Unlock Requests)
@@ -11,7 +11,7 @@ last_reviewed: 2024-08-24
 - [x] (Owner: Engineering | Due: 2024-02-21) Confirm Supabase audit storage approach and RPC contracts for submit/unlock flows. ✅ Extending `ballot_audit` with new action types confirmed on 2024-02-12. ↗️ See [Feature PRD — Open Questions](featurePRD_F6.md#open-questions) & [Dev Plan — Backend & Migrations](devplan_F6.md#backend--migrations).
 
 ## Implementation Tasks
-- [ ] (Owner: Codex Agent | Due: 2024-02-23) Implement `submit_ballot` Supabase function, audit logging updates, and `ballot_unlock_requests` migration with RLS rules. *(Pending — current implementation persists locally via `ballot-lifecycle`; Supabase function work outstanding.)* ↗️ See [Dev Plan — Backend & Migrations](devplan_F6.md#backend--migrations).
+- [x] (Owner: Codex Agent | Due: 2024-02-23) Implement `submit_ballot` Supabase function, audit logging updates, and `ballot_unlock_requests` migration with RLS rules. *(Completed — Codex Agent, 2025-02-14: Added ballot unlock tables, audit trail, and submission/request RPCs via migration `20251029100935_create_ballot_unlock_and_audit_system.sql`.)* ↗️ See [Dev Plan — Backend & Migrations](devplan_F6.md#backend--migrations).
 - [x] (Owner: Codex Agent | Due: 2024-02-23) Extend `src/lib/api.ts`, scoring context, and autosave queue to handle submit/lock lifecycle and realtime subscriptions. ↗️ See [Dev Plan — Architecture & Flow Overview](devplan_F6.md#architecture--flow-overview) & [API & Integration Design](devplan_F6.md#api--integration-design).
   - ✅ 2024-02-23 — Implemented `ballot-lifecycle` helper with local persistence, storage-event broadcasts, and a `useBallotLifecycle` hook powering submission, locking, and unlock subscription behaviour on the Score page.
 - [x] (Owner: Codex Agent | Due: 2024-02-24) Build submit button, unlock sheet components, and pending state banners with accessibility support. ↗️ See [Dev Plan — UI States & UX Messaging](devplan_F6.md#ui-states--ux-messaging) & [Validation & Error Handling](devplan_F6.md#validation--error-handling).
