@@ -181,6 +181,10 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 - Idempotent `submit`; read‑only after submit; “Request Unlock” bottom sheet.
 - Admin unlock writes to audit.
 
+> **Decision [owner=Product][date=2024-02-12]:** Make the unlock request note optional so judges can submit quickly while still encouraging helpful context through helper text and examples.
+> **Decision [owner=Product][date=2024-02-12]:** Surface new unlock requests within the `/admin` console pending queue only, using prominent badges and counts instead of introducing cross-channel alerts for the initial launch.
+> **Decision [owner=Engineering][date=2024-02-12]:** Extend the existing `ballot_audit` table with new action types and metadata to capture submit, lock, and unlock events, avoiding additional audit tables while keeping queries centralized.
+
 **Mobile AC:** Submit feedback toast; disabled state + spinner; no double taps.
 
 ### F7 — Live Ranking (Gated) (P0)
