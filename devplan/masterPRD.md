@@ -135,6 +135,10 @@ Deep link from Brief → Score: `…/score?event=2025-finals&token=<magic>`
 - Magic link (primary); **numeric keypad** for PIN on mobile; auto‑focus inputs.
 - Session TTL end of finals day; local session persistence.
 
+> **Decision [owner=Codex Agent][date=2024-02-05]:** Allow magic-link requests from any domain, with Supabase sign-in restricted to pre-registered judge accounts per event roster.
+> **Decision [owner=Codex Agent][date=2024-02-05]:** Provision judge PINs as organizer-assigned, single-use codes with nightly rotation control handled by ops tooling.
+> **Decision [owner=Codex Agent][date=2024-02-05]:** Handle lost-device recovery through the organizer console, which invalidates the prior session and issues a fresh magic link or PIN on demand.
+
 **Mobile AC:** 2‑tap login; large email/PIN inputs; explicit failure toasts.
 
 ### F2 — Brief (Mobile Nav + Anchors) (P0)
