@@ -151,9 +151,19 @@ Ensure these environment variables are set in your deployment platform:
 
 ## Troubleshooting
 
-### Magic Links Redirect to Wrong URL
+### Magic Links Redirect to Wrong URL (localhost:3000)
 
-**Solution**: Update `VITE_APP_URL` in `.env` and in Supabase Dashboard Site URL settings.
+**Problem**: When clicking magic links, you're redirected to `http://localhost:3000` with an access token in the URL.
+
+**Root Cause**: The Supabase Site URL is set to `localhost:3000` instead of your actual app URL.
+
+**Solution**:
+1. Go to Supabase Dashboard → **Authentication** → **URL Configuration**
+2. Update **Site URL** to `http://localhost:5173` (or your production URL)
+3. Add `http://localhost:5173/**` to **Redirect URLs** whitelist
+4. Save and request a NEW magic link
+
+📖 **See [MAGIC_LINK_FIX.md](./MAGIC_LINK_FIX.md) for complete troubleshooting guide.**
 
 ### Cannot Access Admin Pages
 

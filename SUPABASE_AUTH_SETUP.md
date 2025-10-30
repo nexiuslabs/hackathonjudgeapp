@@ -2,6 +2,23 @@
 
 This guide walks you through configuring Supabase authentication, setting up magic link redirects, and assigning user roles for the Hackathon Judge application.
 
+---
+
+## 🚨 CRITICAL: Fix Magic Link Redirects First
+
+**If magic links are redirecting to `localhost:3000` instead of your app URL**, you MUST update the Site URL in Supabase Dashboard.
+
+**Quick Fix:**
+1. Go to Supabase Dashboard → **Authentication** → **URL Configuration**
+2. Change **Site URL** from `http://localhost:3000` to `http://localhost:5173` (or your production URL)
+3. Add `http://localhost:5173/**` to **Redirect URLs**
+4. Click **Save**
+5. Request a NEW magic link and test
+
+📖 **See [MAGIC_LINK_FIX.md](./MAGIC_LINK_FIX.md) for detailed troubleshooting.**
+
+---
+
 ## Table of Contents
 
 1. [Configure Supabase Site URL](#1-configure-supabase-site-url)
