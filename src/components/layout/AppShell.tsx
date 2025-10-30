@@ -1,4 +1,4 @@
-import { type PropsWithChildren } from 'react';
+import { type CSSProperties, type PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
 import { ClipboardCheck, Gauge, LogIn, ShieldCheck, Trophy } from 'lucide-react';
 
@@ -7,6 +7,8 @@ import { buildInfo } from '@/lib/build-info';
 import { cn } from '@/lib/utils';
 
 import { SafeAreaContainer } from './SafeAreaContainer';
+
+export const BOTTOM_NAV_HEIGHT = '5.5rem';
 
 const navItems = [
   {
@@ -43,7 +45,10 @@ const navItems = [
 
 export function AppShell({ children }: PropsWithChildren) {
   return (
-    <div className="min-h-screen bg-surface-muted text-neutral-100 flex flex-col">
+    <div
+      className="min-h-screen bg-surface-muted text-neutral-100 flex flex-col"
+      style={{ '--bottom-nav-height': BOTTOM_NAV_HEIGHT } as CSSProperties}
+    >
       <header className="border-b border-surface-border/60 bg-surface-base/90 backdrop-blur">
         <SafeAreaContainer
           className="flex items-center justify-between gap-4 py-4"
@@ -77,7 +82,10 @@ export function AppShell({ children }: PropsWithChildren) {
           </div>
         </SafeAreaContainer>
       </main>
-      <nav className="border-t border-surface-border/60 bg-surface-base/90 backdrop-blur">
+      <nav
+        className="border-t border-surface-border/60 bg-surface-base/90 backdrop-blur"
+        style={{ minHeight: `calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px))` } as CSSProperties}
+      >
         <SafeAreaContainer
           as="div"
           className="flex items-center justify-between gap-1 py-2 text-sm"
