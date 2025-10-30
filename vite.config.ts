@@ -30,7 +30,9 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: ({ url }) => url.pathname.endsWith(`${appMetadata.offlineSnapshotName}.json`),
+            urlPattern: new RegExp(
+              String.raw`/${appMetadata.offlineSnapshotName}\.json$`,
+            ),
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: `offline-brief-${buildVersion}`,
