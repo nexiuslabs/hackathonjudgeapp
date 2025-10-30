@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppShell } from '@/components/layout/AppShell';
+import { MagicLinkHandler } from '@/components/auth/MagicLinkHandler';
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute';
 import { AdminEventProvider } from '@/contexts/AdminEventContext';
 import { AuthPage } from '@/pages/AuthPage';
@@ -16,6 +17,7 @@ import { ADMIN_ROLES } from '@/types/permissions';
 function App() {
   return (
     <AppShell>
+      <MagicLinkHandler />
       <Routes>
         <Route path="/" element={<Navigate to="/brief" replace />} />
         <Route path="/brief" element={<BriefPage />} />
