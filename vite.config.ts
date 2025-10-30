@@ -7,6 +7,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { appMetadata } from './src/config/app-metadata';
 
 const buildVersion = process.env.BUILD_VERSION ?? new Date().toISOString();
+const offlineSnapshotPattern = new RegExp(
+  String.raw`/${appMetadata.offlineSnapshotName}\.json$`,
+);
 
 export default defineConfig({
   plugins: [
@@ -30,9 +33,7 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: new RegExp(
-              String.raw`/${appMetadata.offlineSnapshotName}\.json$`,
-            ),
+            urlPattern: offlineSnapshotPattern,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: `offline-brief-${buildVersion}`,
