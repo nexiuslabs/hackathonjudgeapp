@@ -1,6 +1,9 @@
+import { type CSSProperties } from 'react';
+
 import { Loader2, WifiOff } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { BOTTOM_NAV_HEIGHT } from '@/components/layout/AppShell';
 
 export type ScoreFormStatus = 'incomplete' | 'ready' | 'pending' | 'locked';
 
@@ -51,12 +54,16 @@ export function ScoreStickyBar({
   const formattedTotal = `${total.toFixed(1)} / ${maxTotal}`;
   const statusCopy = formatStatusCopy(status, missingCount, isOffline);
   const isBlocked = status !== 'ready';
+  const stickyBarPositionStyles: CSSProperties = {
+    bottom: `calc(var(--bottom-nav-height, ${BOTTOM_NAV_HEIGHT}) + env(safe-area-inset-bottom, 0px))`,
+  };
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border/70 bg-surface-elevated/95 px-4 py-4 shadow-lg backdrop-blur lg:px-12"
+      className="fixed inset-x-0 z-30 border-t border-surface-border/70 bg-surface-elevated/95 px-4 py-4 shadow-lg backdrop-blur lg:px-12"
       role="region"
       aria-label="Score submission summary"
+      style={stickyBarPositionStyles}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1 text-sm text-neutral-300">
