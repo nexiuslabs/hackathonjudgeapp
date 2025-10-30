@@ -159,6 +159,162 @@ export async function verifyPin({ email, pin }: VerifyPinOptions): Promise<Verif
   } as VerifyPinResult;
 }
 
+export interface SignUpWithPasswordOptions {
+  email: string;
+  password: string;
+  eventId?: string;
+  fullName?: string;
+}
+
+export interface SignUpWithPasswordResult {
+  userId: string;
+  email: string;
+  needsEmailConfirmation: boolean;
+}
+
+export async function signUpWithPassword({
+  email,
+  password,
+  eventId,
+  fullName,
+}: SignUpWithPasswordOptions): Promise<SignUpWithPasswordResult> {
+  const trimmedEmail = email.trim().toLowerCase();
+
+  if (!trimmedEmail) {
+    throw new AuthApiError('An email address is required to sign up.');
+  }
+
+  if (!password || password.length < 6) {
+    throw new AuthApiError('Password must be at least 6 characters long.');
+  }
+
+  const supabase = getSupabaseClient();
+
+  const metadata: Record<string, unknown> = {};
+  if (eventId) {
+    metadata.event_id = eventId;
+  }
+  if (fullName) {
+    metadata.full_name = fullName;
+    metadata.name = fullName;
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email: trimmedEmail,
+    password,
+    options: {
+      data: Object.keys(metadata).length > 0 ? metadata : undefined,
+    },
+  });
+
+  if (error) {
+    if (error.message.includes('already registered')) {
+      throw new AuthApiError('This email is already registered. Please sign in instead.', error);
+    }
+    throw new AuthApiError('Unable to create your account. Please try again.', error);
+  }
+
+  if (!data.user) {
+    throw new AuthApiError('Account creation failed. Please try again.');
+  }
+
+  return {
+    userId: data.user.id,
+    email: data.user.email ?? trimmedEmail,
+    needsEmailConfirmation: !data.session,
+  };
+}
+
+export interface SignInWithPasswordOptions {
+  email: string;
+  password: string;
+}
+
+export async function signInWithPassword({ email, password }: SignInWithPasswordOptions): Promise<void> {
+  const trimmedEmail = email.trim().toLowerCase();
+
+  if (!trimmedEmail) {
+    throw new AuthApiError('An email address is required to sign in.');
+  }
+
+  if (!password) {
+    throw new AuthApiError('A password is required to sign in.');
+  }
+
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: trimmedEmail,
+    password,
+  });
+
+  if (error) {
+    if (error.message.includes('Invalid login credentials')) {
+      throw new AuthApiError('Invalid email or password. Please check your credentials and try again.', error);
+    }
+    throw new AuthApiError('Unable to sign in. Please try again.', error);
+  }
+}
+
+export async function signOut(): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    throw new AuthApiError('Unable to sign out. Please try again.', error);
+  }
+}
+
+export interface ResetPasswordRequestOptions {
+  email: string;
+  redirectTo?: string;
+}
+
+export async function requestPasswordReset({ email, redirectTo }: ResetPasswordRequestOptions): Promise<void> {
+  const trimmedEmail = email.trim().toLowerCase();
+
+  if (!trimmedEmail) {
+    throw new AuthApiError('An email address is required to reset your password.');
+  }
+
+  const supabase = getSupabaseClient();
+
+  const appUrl = import.meta.env.VITE_APP_URL;
+  const defaultRedirect =
+    redirectTo ??
+    (appUrl ? `${appUrl}/auth` : undefined) ??
+    (typeof window !== 'undefined' ? `${window.location.origin}/auth` : undefined);
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo: defaultRedirect,
+  });
+
+  if (error) {
+    throw new AuthApiError('Unable to send password reset email. Please try again.', error);
+  }
+}
+
+export interface UpdatePasswordOptions {
+  newPassword: string;
+}
+
+export async function updatePassword({ newPassword }: UpdatePasswordOptions): Promise<void> {
+  if (!newPassword || newPassword.length < 6) {
+    throw new AuthApiError('Password must be at least 6 characters long.');
+  }
+
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    throw new AuthApiError('Unable to update your password. Please try again.', error);
+  }
+}
+
 export async function getSession() {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.getSession();
